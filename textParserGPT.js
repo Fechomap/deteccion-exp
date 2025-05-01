@@ -53,7 +53,7 @@ async function parseServiceText(text) {
     6. Referencia (si está disponible)
     
     IMPORTANTE:
-    - El campo cuenta siempre es "CHUBV" cuando hay un expediente
+    - El campo cuenta siempre es "CHUBB" cuando hay un expediente
     - Ignora términos que no son placas reales como "TROYA03", "CRK", "4X2", "PAZ", "REYES", etc.
     - No incluyas las coordenadas en tu respuesta
     - Si un dato no está disponible en el texto, incluye el campo con valor null
@@ -102,9 +102,9 @@ async function parseServiceText(text) {
         log(`Vehículo convertido de array a string: ${extractedData.vehiculo}`);
       }
       
-      // Asegurarse de que la cuenta sea CHUBV
+      // Asegurarse de que la cuenta sea CHUBB
       if (extractedData.expediente && extractedData.expediente.startsWith('9')) {
-        extractedData.cuenta = 'CHUBV';
+        extractedData.cuenta = 'CHUBB';
       }
       
       log('Procesamiento de texto completado');
@@ -162,11 +162,11 @@ function formatDataToMessages(data) {
     messages.push("No se encontró usuario");
   }
   
-  // 5. Cuenta (siempre CHUBV cuando hay expediente que empieza con 9)
+  // 5. Cuenta (siempre CHUBB cuando hay expediente que empieza con 9)
   if (data.cuenta) {
     messages.push(data.cuenta);
   } else {
-    messages.push("CHUBV");  // Por defecto
+    messages.push("CHUBB");  // Por defecto
   }
   
   // 6. Entre calles (opcional)
