@@ -1,0 +1,31 @@
+{
+  "name": "telegram-service-bot",
+  "version": "1.0.0",
+  "description": "Bot de Telegram para extracción de información de servicios",
+  "main": "bot-telegram.js",
+  "scripts": {
+    "start": "node bot-telegram.js",
+    "dev": "nodemon bot-telegram.js",
+    "test": "node test-parser.js"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "maps",
+    "coordinates",
+    "text-processing"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.9.0",
+    "dotenv": "^16.5.0",
+    "node-telegram-bot-api": "^0.64.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
