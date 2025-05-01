@@ -44,11 +44,17 @@ if (!process.env.OPENAI_API_KEY) {
   process.exit(1);
 }
 
+// Verificación de TELEGRAM_GROUP_ID para notificaciones al grupo
+if (!process.env.TELEGRAM_GROUP_ID) {
+  log("ADVERTENCIA: No se encontró TELEGRAM_GROUP_ID en el archivo .env. No se enviarán mensajes al grupo.", 'warn');
+}
+
 // Configuración
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const PORT = process.env.PORT || 3000;
 const URL = process.env.APP_URL;
 const USE_WEBHOOK = process.env.USE_WEBHOOK === 'true';
+const GROUP_CHAT_ID = process.env.TELEGRAM_GROUP_ID ? parseInt(process.env.TELEGRAM_GROUP_ID) : null;
 
 // Crear una instancia del bot
 let bot;
@@ -89,6 +95,30 @@ if (USE_WEBHOOK && URL) {
   bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
 }
 
+/**
+ * Envía un mensaje al usuario original y también al grupo (si está configurado)
+ * @param {number} userChatId - ID del chat del usuario
+ * @param {string} message - Mensaje a enviar
+ * @param {boolean} sendToGroup - Si debe enviarse al grupo
+ * @returns {Promise} - Promesa que se resuelve cuando ambos mensajes han sido enviados
+ */
+async function sendMessageToUserAndGroup(userChatId, message, sendToGroup = true) {
+  try {
+    // Enviar al usuario
+    await bot.sendMessage(userChatId, message);
+    log(`Mensaje enviado a usuario ${userChatId}: ${message}`);
+    
+    // Enviar al grupo si está configurado
+    if (sendToGroup && GROUP_CHAT_ID) {
+      await bot.sendMessage(GROUP_CHAT_ID, message);
+      log(`Mensaje enviado al grupo ${GROUP_CHAT_ID}: ${message}`);
+    }
+  } catch (error) {
+    logError('Error al enviar mensaje', error);
+    throw error; // Re-lanzar el error para manejarlo en la función que llama
+  }
+}
+
 // Manejador de errores básico
 bot.on('polling_error', (error) => {
   logError("Error de polling", error);
@@ -97,7 +127,14 @@ bot.on('polling_error', (error) => {
 // Manejador para el comando /start
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  log(`Comando /start recibido del chat ID: ${chatId}`);
+  const info = getChatInfo(msg);
+  
+  // Log detallado para comando start
+  log(`Comando /start recibido:
+    Chat ID: ${chatId}
+    Tipo: ${info.chat.type}
+    De: ${info.chat.type === 'private' ? `${info.from.firstName} ${info.from.lastName}` : info.chat.title}
+    ${info.from.username ? `Username: @${info.from.username}` : ''}`, 'info');
   
   bot.sendMessage(chatId, 
     '¡Hola! Soy un bot que puede:\n\n' +
@@ -111,7 +148,14 @@ bot.onText(/\/start/, (msg) => {
 // Manejador para el comando /ayuda
 bot.onText(/\/ayuda/, (msg) => {
   const chatId = msg.chat.id;
-  log(`Comando /ayuda recibido del chat ID: ${chatId}`);
+  const info = getChatInfo(msg);
+  
+  // Log detallado para comando ayuda
+  log(`Comando /ayuda recibido:
+    Chat ID: ${chatId}
+    Tipo: ${info.chat.type}
+    De: ${info.chat.type === 'private' ? `${info.from.firstName} ${info.from.lastName}` : info.chat.title}
+    ${info.from.username ? `Username: @${info.from.username}` : ''}`, 'info');
   
   bot.sendMessage(chatId, 
     '📍 *COORDENADAS*\n' +
@@ -135,6 +179,33 @@ bot.onText(/\/ayuda/, (msg) => {
    .catch(error => logError('Error al enviar mensaje', error));
 });
 
+// Función para obtener información detallada del chat
+function getChatInfo(msg) {
+  const chat = msg.chat;
+  const from = msg.from || {};
+  const chatType = chat.type || 'desconocido';
+  
+  // Construir información del chat
+  let chatInfo = {
+    id: chat.id,
+    type: chatType,
+    title: chat.title || 'N/A',
+    username: chat.username || 'N/A',
+    firstName: chat.first_name || 'N/A',
+    lastName: chat.last_name || 'N/A'
+  };
+  
+  // Construir información del remitente
+  let fromInfo = {
+    id: from.id || 'N/A',
+    username: from.username || 'N/A',
+    firstName: from.first_name || 'N/A',
+    lastName: from.last_name || 'N/A'
+  };
+  
+  return { chat: chatInfo, from: fromInfo };
+}
+
 // Manejador para mensajes de texto
 bot.on('message', async (msg) => {
   // Verificar que sea un mensaje de texto y no un comando
@@ -143,7 +214,27 @@ bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
   
-  log(`Mensaje recibido de ${chatId}: ${text.length} caracteres`);
+  // Obtener y loggear información detallada
+  const info = getChatInfo(msg);
+  
+  // Log detallado en formato JSON
+  const logData = {
+    timestamp: new Date().toISOString(),
+    chatId: chatId,
+    chatType: info.chat.type,
+    chatTitle: info.chat.type === 'private' ? `${info.chat.firstName} ${info.chat.lastName}` : info.chat.title,
+    username: info.chat.type === 'private' ? info.from.username : 'N/A',
+    messageLength: text.length,
+    messagePreview: text.substring(0, 30) + (text.length > 30 ? '...' : '')
+  };
+  
+  // Log detallado en formato amigable para consola
+  log(`MENSAJE RECIBIDO - DETALLES:
+    Chat ID: ${logData.chatId}
+    Tipo: ${logData.chatType}
+    De: ${logData.chatTitle} ${logData.username ? `(@${logData.username})` : ''}
+    Longitud: ${logData.messageLength} caracteres
+    Vista previa: ${logData.messagePreview}`, 'info');
   
   // Verificar si el mensaje contiene una URL de Google Maps
   if (text.includes('google.com/maps') || text.includes('google.com.mx/maps') || text.includes('maps.app.goo.gl')) {
@@ -155,11 +246,23 @@ bot.on('message', async (msg) => {
     if (coordinates && coordinates.length > 0) {
       log(`Coordenadas encontradas: ${coordinates.join(', ')}`);
       
+      // Enviar encabezado y URL original al grupo
+      if (GROUP_CHAT_ID) {
+        try {
+          await bot.sendMessage(GROUP_CHAT_ID, '🚨👀 Oigan...', { parse_mode: 'Markdown' });
+          await bot.sendMessage(GROUP_CHAT_ID, '⚠️📍 Hay un posible servicio de *CHUBB*', { parse_mode: 'Markdown' });
+          await bot.sendMessage(GROUP_CHAT_ID, '🚗💨 ¿A alguien le queda?', { parse_mode: 'Markdown' });
+          await bot.sendMessage(GROUP_CHAT_ID, text);
+          log('Encabezado y URL enviados al grupo');
+        } catch (error) {
+          logError('Error al enviar encabezado o URL al grupo', error);
+        }
+      }
+      
       // Enviar cada coordenada en un mensaje separado
       for (const coord of coordinates) {
         try {
-          await bot.sendMessage(chatId, coord);
-          log(`Coordenada enviada: ${coord}`);
+          await sendMessageToUserAndGroup(chatId, coord);
         } catch (error) {
           logError(`Error al enviar coordenada: ${coord}`, error);
         }
@@ -200,9 +303,11 @@ bot.on('message', async (msg) => {
       // Enviar cada dato en un mensaje separado
       if (messages.length > 0) {
         for (const message of messages) {
-          await bot.sendMessage(chatId, message)
-            .then(() => log(`Dato enviado: ${message}`))
-            .catch(error => logError('Error al enviar dato', error));
+          try {
+            await sendMessageToUserAndGroup(chatId, message);
+          } catch (error) {
+            logError(`Error al enviar dato: ${message}`, error);
+          }
         }
       } else {
         await bot.sendMessage(chatId, "No se pudo extraer información del texto.")
@@ -223,6 +328,44 @@ bot.on('message', async (msg) => {
 // Exportar el bot para index.js
 module.exports = bot;
 
+// Añadir comando para obtener ID del chat
+bot.onText(/\/chatid/, (msg) => {
+  const chatId = msg.chat.id;
+  const info = getChatInfo(msg);
+  const chatType = info.chat.type;
+  
+  // Construir respuesta con información detallada
+  let response = `📢 *Información del chat:*\n\n`;
+  response += `• *ID del chat:* \`${chatId}\`\n`;
+  response += `• *Tipo de chat:* ${chatType}\n`;
+  
+  if (chatType === 'private') {
+    response += `• *Usuario:* ${info.from.firstName} ${info.from.lastName}\n`;
+    if (info.from.username) {
+      response += `• *Username:* @${info.from.username}\n`;
+    }
+  } else {
+    response += `• *Título del grupo:* ${info.chat.title}\n`;
+    response += `• *Enviado por:* ${info.from.firstName} ${info.from.lastName}\n`;
+    if (info.from.username) {
+      response += `• *Username:* @${info.from.username}\n`;
+    }
+  }
+  
+  // Enviar mensaje con información
+  bot.sendMessage(chatId, response, { parse_mode: 'Markdown' })
+    .then(() => log(`Información del chat enviada a ${chatId}`))
+    .catch(error => logError('Error al enviar información del chat', error));
+  
+  // Loggear la información completa
+  log(`Comando /chatid ejecutado:
+    Chat ID: ${chatId}
+    Tipo: ${chatType}
+    Título/Nombre: ${chatType === 'private' ? `${info.from.firstName} ${info.from.lastName}` : info.chat.title}
+    ${info.from.username ? `Username: @${info.from.username}` : ''}`, 'info');
+});
+
 // Mensaje de inicio
 const mode = USE_WEBHOOK ? `webhook en ${URL}` : 'polling';
 log(`Bot iniciado correctamente con integración de ChatGPT en modo ${mode}. Envía /start en Telegram para comenzar.`);
+log(`Para obtener el ID de un chat o grupo, simplemente envía el comando /chatid en ese chat o grupo.`);
