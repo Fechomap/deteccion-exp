@@ -1,7 +1,7 @@
 {
   "name": "telegram-service-bot",
   "version": "1.0.0",
-  "description": "Bot de Telegram para extracción de información de servicios",
+  "description": "Bot de Telegram para extracción de información de servicios usando ChatGPT",
   "main": "bot-telegram.js",
   "scripts": {
     "start": "node bot-telegram.js",
@@ -13,14 +13,17 @@
     "bot",
     "maps",
     "coordinates",
-    "text-processing"
+    "text-processing",
+    "chatgpt",
+    "openai"
   ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.9.0",
     "dotenv": "^16.5.0",
-    "node-telegram-bot-api": "^0.64.0"
+    "node-telegram-bot-api": "^0.64.0",
+    "openai": "^4.16.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

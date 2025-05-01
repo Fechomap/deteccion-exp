@@ -1,8 +1,8 @@
-// Bot de Telegram con parser de texto
+// Bot de Telegram con parser de texto usando ChatGPT
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const { extractCoordinates } = require('./coordinatesExtractor');
-const { parseServiceText, formatDataToMessages } = require('./textParser');
+const { parseServiceText, formatDataToMessages } = require('./textParserGPT'); // Usamos la versión GPT
 const fs = require('fs');
 const path = require('path');
 
@@ -39,6 +39,11 @@ if (!process.env.TELEGRAM_TOKEN) {
   process.exit(1);
 }
 
+if (!process.env.OPENAI_API_KEY) {
+  log("ERROR: No se encontró OPENAI_API_KEY en el archivo .env", 'error');
+  process.exit(1);
+}
+
 // Configuración
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 
@@ -58,8 +63,8 @@ bot.onText(/\/start/, (msg) => {
   bot.sendMessage(chatId, 
     '¡Hola! Soy un bot que puede:\n\n' +
     '1. Extraer coordenadas de enlaces de Google Maps\n' +
-    '2. Procesar texto copiado de la página web\n\n' +
-    'Simplemente envíame un enlace de Google Maps o copia y pega el texto de la página.'
+    '2. Procesar texto copiado de la página web usando ChatGPT\n\n' +
+    'Simplemente envíame un enlace de Google Maps o copia y pega el texto completo de la página.'
   ).then(() => log('Mensaje de bienvenida enviado'))
    .catch(error => logError('Error al enviar mensaje', error));
 });
@@ -78,7 +83,14 @@ bot.onText(/\/ayuda/, (msg) => {
     '2. Selecciona todo el texto (Ctrl+A o Cmd+A)\n' +
     '3. Copia el texto (Ctrl+C o Cmd+C)\n' +
     '4. Pega el texto en este chat (Ctrl+V o Cmd+V)\n\n' +
-    'Extraeré toda la información importante y te la enviaré en mensajes separados.',
+    'ChatGPT extraerá la siguiente información y te la enviaré en mensajes separados:\n' +
+    '• Número de expediente\n' +
+    '• Datos del vehículo\n' +
+    '• Placas\n' +
+    '• Usuario/Cliente\n' +
+    '• Cuenta\n' +
+    '• Entre calles (si está disponible)\n' +
+    '• Referencia (si está disponible)',
     { parse_mode: 'Markdown' }
   ).then(() => log('Mensaje de ayuda enviado'))
    .catch(error => logError('Error al enviar mensaje', error));
@@ -123,10 +135,10 @@ bot.on('message', async (msg) => {
   
   // Verificar si es un texto largo (posiblemente copiado de la página)
   if (text.length > 200 && (text.includes('GRUAS') || text.includes('Servicio') || text.includes('Vehículo'))) {
-    log('Detectado texto de la página web, procesando...');
+    log('Detectado texto de la página web, procesando con ChatGPT...');
     
     // Notificar que estamos procesando el texto
-    const processingMsg = await bot.sendMessage(chatId, 'Procesando texto... esto puede tomar unos segundos ⏳')
+    const processingMsg = await bot.sendMessage(chatId, 'Procesando texto con ChatGPT... esto puede tomar unos segundos ⏳')
       .catch(error => {
         logError('Error al enviar mensaje de procesamiento', error);
         return null;
@@ -135,9 +147,9 @@ bot.on('message', async (msg) => {
     if (!processingMsg) return;
     
     try {
-      // Procesar el texto
-      const extractedData = parseServiceText(text);
-      log(`Datos extraídos: ${JSON.stringify(extractedData)}`);
+      // Procesar el texto usando ChatGPT
+      const extractedData = await parseServiceText(text);
+      log(`Datos extraídos por ChatGPT: ${JSON.stringify(extractedData)}`);
       
       // Formatear los datos para enviar
       const messages = formatDataToMessages(extractedData);
@@ -158,15 +170,15 @@ bot.on('message', async (msg) => {
           .catch(error => logError('Error al enviar mensaje', error));
       }
     } catch (error) {
-      logError('Error al procesar el texto', error);
+      logError('Error al procesar el texto con ChatGPT', error);
       
       await bot.deleteMessage(chatId, processingMsg.message_id)
         .catch(err => logError('Error al eliminar mensaje de procesamiento', err));
       
-      await bot.sendMessage(chatId, `Ocurrió un error al procesar el texto: ${error.message}`)
+      await bot.sendMessage(chatId, `Ocurrió un error al procesar el texto con ChatGPT: ${error.message}`)
         .catch(err => logError('Error al enviar mensaje de error', err));
     }
   }
 });
 
-log('Bot iniciado correctamente. Envía /start en Telegram para comenzar.');
+log('Bot iniciado correctamente con integración de ChatGPT. Envía /start en Telegram para comenzar.');
