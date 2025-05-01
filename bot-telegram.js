@@ -46,9 +46,48 @@ if (!process.env.OPENAI_API_KEY) {
 
 // Configuración
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
+const PORT = process.env.PORT || 3000;
+const URL = process.env.APP_URL;
+const USE_WEBHOOK = process.env.USE_WEBHOOK === 'true';
 
-// Crear una instancia del bot con polling
-const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+// Crear una instancia del bot
+let bot;
+
+if (USE_WEBHOOK && URL) {
+  // Modo webhook para producción
+  log(`Iniciando bot en modo webhook en URL: ${URL}`);
+  bot = new TelegramBot(TELEGRAM_TOKEN, { webHook: true });
+  
+  // Configurar webhook
+  bot.setWebHook(`${URL}/bot${TELEGRAM_TOKEN}`);
+  
+  // Crear servidor Express para webhook (si no existe)
+  const express = require('express');
+  const app = express();
+  
+  // Configurar middleware para Telegram
+  app.use(express.json());
+  
+  // Ruta para webhook de Telegram
+  app.post(`/bot${TELEGRAM_TOKEN}`, (req, res) => {
+    bot.processUpdate(req.body);
+    res.sendStatus(200);
+  });
+  
+  // Ruta de verificación
+  app.get('/', (req, res) => {
+    res.send('El bot está funcionando correctamente');
+  });
+  
+  // Iniciar servidor
+  app.listen(PORT, () => {
+    log(`Servidor Express iniciado en el puerto ${PORT}`);
+  });
+} else {
+  // Modo polling para desarrollo local
+  log('Iniciando bot en modo polling');
+  bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+}
 
 // Manejador de errores básico
 bot.on('polling_error', (error) => {
@@ -181,4 +220,9 @@ bot.on('message', async (msg) => {
   }
 });
 
-log('Bot iniciado correctamente con integración de ChatGPT. Envía /start en Telegram para comenzar.');
+// Exportar el bot para index.js
+module.exports = bot;
+
+// Mensaje de inicio
+const mode = USE_WEBHOOK ? `webhook en ${URL}` : 'polling';
+log(`Bot iniciado correctamente con integración de ChatGPT en modo ${mode}. Envía /start en Telegram para comenzar.`);
