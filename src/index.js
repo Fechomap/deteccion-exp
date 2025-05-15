@@ -5,13 +5,18 @@ const config = require('./config');
 const Logger = require('./utils/logger');
 const TelegramService = require('./services/telegram.service');
 const RecLocationService = require('./services/reclocation.service');
-const MessageQueueService = require('./services/message-queue.service');
+const MessageQueueService = require('./services/queue');
+const OpenAIService = require('./services/openai');
+const ProcessingStateService = require('./services/processing-state.service');
+const CoordinatesUtil = require('./utils/coordinates');
+const CommandRegistry = require('./handlers/commands');
+const MessageHandlerRegistry = require('./handlers/messages');
 
 /**
  * Función principal que inicia la aplicación
  */
 async function main() {
-  Logger.info('Iniciando aplicación...', 'Main');
+  Logger.info('Iniciando aplicación con arquitectura refactorizada...', 'Main');
   
   // Validar configuración
   if (!config.isValid) {
@@ -20,10 +25,22 @@ async function main() {
   }
   
   try {
-    // Inicializar servicio de cola de mensajes
-    Logger.info('Inicializando servicio de cola de mensajes...', 'Main');
-    // No es necesario inicializar explícitamente ya que es una instancia singleton
-    Logger.info('Servicio de cola de mensajes inicializado correctamente.', 'Main');
+    // Inicializar servicios
+    Logger.info('Inicializando servicios...', 'Main');
+    
+    // Agrupar servicios para inyección de dependencias
+    const services = {
+      config,
+      queue: MessageQueueService,
+      openai: OpenAIService,
+      recLocation: RecLocationService,
+      processingState: ProcessingStateService,
+      coordinatesUtil: CoordinatesUtil
+    };
+    
+    // Inicializar registros de manejadores
+    const commandRegistry = new CommandRegistry(services);
+    const messageRegistry = new MessageHandlerRegistry(services);
     
     // Verificar conectividad con RecLocation API
     setTimeout(async () => {
@@ -37,10 +54,14 @@ async function main() {
     // Inicializar el bot de Telegram
     const bot = TelegramService.initialize();
     
+    // Registrar manejadores
+    commandRegistry.register(bot);
+    messageRegistry.register(bot);
+    
     // Log de información de configuración
     Logger.info(`Configuración de IDs de chat - Detección-Exp: ${config.TELEGRAM_GROUP_ID}, RecLocation: ${config.RECLOCATION_GROUP_ID}`, 'Main');
     Logger.info('Sistema de cola de mensajes activado para garantizar el orden correcto de entrega', 'Main');
-    Logger.info('Bot de Telegram iniciado con gestión de flujo mejorada. Presiona Ctrl+C para detener.', 'Main');
+    Logger.info('Bot de Telegram iniciado con arquitectura refactorizada. Presiona Ctrl+C para detener.', 'Main');
   } catch (error) {
     Logger.logError('Error al iniciar la aplicación', error, 'Main');
     process.exit(1);

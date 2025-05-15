@@ -5,8 +5,9 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const config = require('../config');
 const Logger = require('../utils/logger');
-const CommandHandler = require('../handlers/command.handler');
-const MessageHandler = require('../handlers/message.handler');
+// Importar los nuevos registros en lugar de los handlers antiguos
+const CommandRegistry = require('../handlers/commands');
+const MessageHandlerRegistry = require('../handlers/messages');
 
 class TelegramService {
   /**
@@ -70,8 +71,8 @@ class TelegramService {
       bot = new TelegramBot(config.TELEGRAM_TOKEN, { polling: true });
     }
     
-    // Registrar manejadores de bot
-    this._registerHandlers(bot);
+    // No registramos los handlers aquí, los pasamos de vuelta
+    // para que se registren en src/index.js
     
     // Manejador de errores de polling
     bot.on('polling_error', (error) => {
@@ -81,24 +82,8 @@ class TelegramService {
     // Mensaje de inicio
     const mode = config.USE_WEBHOOK ? `webhook en ${config.APP_URL}` : 'polling';
     Logger.info(`Bot iniciado correctamente en modo ${mode}`, 'Telegram');
-    Logger.info(`Para obtener el ID de un chat o grupo, simplemente envía el comando /chatid en ese chat o grupo`, 'Telegram');
     
     return bot;
-  }
-  
-  /**
-   * Registra los manejadores de comandos y mensajes
-   * @private
-   * @param {TelegramBot} bot - Instancia del bot
-   */
-  static _registerHandlers(bot) {
-    // Registrar manejadores de comandos
-    CommandHandler.register(bot);
-    
-    // Registrar manejadores de mensajes
-    MessageHandler.register(bot);
-    
-    Logger.info('Manejadores de comandos y mensajes registrados', 'Telegram');
   }
 }
 

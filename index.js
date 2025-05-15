@@ -4,4 +4,4 @@ require('dotenv').config();
 // Cargar la aplicación desde la nueva estructura
 require('./src/index');
 
-console.log('Bot de Telegram iniciado. Presiona Ctrl+C para detener.');
+console.log('Bot de Telegram iniciado con arquitectura refactorizada. Presiona Ctrl+C para detener.');
