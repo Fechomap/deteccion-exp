@@ -86,16 +86,13 @@ class MessageHandler {
     if (coordinates && coordinates.length > 0) {
       Logger.info(`Coordenadas encontradas: ${coordinates.join(', ')}`, 'MessageHandler');
       
-      // Enviar encabezado y URL original al grupo
+      // Enviar solo la URL original al grupo sin alertas
       if (config.TELEGRAM_GROUP_ID) {
         try {
-          await bot.sendMessage(config.TELEGRAM_GROUP_ID, '🚨👀 Oigan...', { parse_mode: 'Markdown' });
-          await bot.sendMessage(config.TELEGRAM_GROUP_ID, '⚠️📍 Hay un posible servicio de *CHUBB*', { parse_mode: 'Markdown' });
-          await bot.sendMessage(config.TELEGRAM_GROUP_ID, '🚗💨 ¿A alguien le queda?', { parse_mode: 'Markdown' });
           await bot.sendMessage(config.TELEGRAM_GROUP_ID, text);
-          Logger.info('Encabezado y URL enviados al grupo', 'MessageHandler');
+          Logger.info('URL enviada al grupo', 'MessageHandler');
         } catch (error) {
-          Logger.logError('Error al enviar encabezado o URL al grupo', error, 'MessageHandler');
+          Logger.logError('Error al enviar URL al grupo', error, 'MessageHandler');
         }
       }
       
@@ -112,7 +109,6 @@ class MessageHandler {
       if (coordinates.length > 0) {
         try {
           Logger.info(`Solicitando automáticamente timing para coordenada: ${coordinates[0]}`, 'MessageHandler');
-          // Pasar explícitamente el ID del grupo de Telegram para asegurar que se envía al chat correcto
           await RecLocationService.requestTimingReport(coordinates[0], config.TELEGRAM_GROUP_ID);
           Logger.info(`Solicitud de timing completada exitosamente`, 'MessageHandler');
           
@@ -122,7 +118,6 @@ class MessageHandler {
           }
         } catch (error) {
           Logger.logError('Error al solicitar timing automático', error, 'MessageHandler');
-          // No enviamos mensaje de error al usuario para mantener la experiencia transparente
         }
       }
     } else {
@@ -131,7 +126,7 @@ class MessageHandler {
         .catch(error => Logger.logError('Error al enviar mensaje', error, 'MessageHandler'));
     }
   }
-  
+
   /**
    * Maneja texto de servicio
    * @private
@@ -165,6 +160,18 @@ class MessageHandler {
       await bot.deleteMessage(chatId, processingMsg.message_id)
         .catch(error => Logger.logError('Error al eliminar mensaje de procesamiento', error, 'MessageHandler'));
       
+      // Enviar alertas antes de los datos (movido desde _handleGoogleMapsUrl)
+      if (config.TELEGRAM_GROUP_ID && messages.length > 0) {
+        try {
+          await bot.sendMessage(config.TELEGRAM_GROUP_ID, '🚨👀 Oigan...', { parse_mode: 'Markdown' });
+          await bot.sendMessage(config.TELEGRAM_GROUP_ID, '⚠️📍 Hay un posible servicio de *CHUBB*', { parse_mode: 'Markdown' });
+          await bot.sendMessage(config.TELEGRAM_GROUP_ID, '🚗💨 ¿A alguien le queda?', { parse_mode: 'Markdown' });
+          Logger.info('Alertas enviadas al grupo', 'MessageHandler');
+        } catch (error) {
+          Logger.logError('Error al enviar alertas al grupo', error, 'MessageHandler');
+        }
+      }
+      
       // Enviar cada dato en un mensaje separado
       if (messages.length > 0) {
         for (const message of messages) {
@@ -175,8 +182,6 @@ class MessageHandler {
           }
         }
         
-        // Ya no extraemos coordenadas ni solicitamos timing automáticamente cuando procesamos texto
-        // Solo enviamos los datos extraídos
         Logger.info('Procesamiento de texto completado, datos enviados correctamente', 'MessageHandler');
       } else {
         await bot.sendMessage(chatId, "No se pudo extraer información del texto.")
