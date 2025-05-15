@@ -111,62 +111,56 @@ class ServiceMessageHandler extends BaseMessageHandler {
    * @param {string[]} messages - Mensajes a enviar
    */
   async _handleExtractedData(bot, chatId, messages) {
-    const { queue, config, serviceCache } = this.services;
-    
+    const { queue, config } = this.services;
+    const serviceCache = this.services.serviceCache;
+
     // Generar ID único para este servicio
     const serviceId = `service_${Date.now()}_${chatId}`;
     
     if (config.TELEGRAM_GROUP_ID && messages.length > 0) {
       try {
         // Almacenar todos los datos en el caché
-        const serviceData = {
-          id: serviceId,
-          messages: messages,
-          timestamp: Date.now(),
-          origin: chatId
-        };
-        
-        serviceCache.storeService(serviceId, serviceData);
-        
-        // Obtener solo la información del vehículo (segundo mensaje)
-        const vehicleInfo = messages.length > 1 ? messages[1] : "No hay información del vehículo";
-        
-        // Crear mensaje con solo la información clave y botones
-        const initialMessage = `🚨 *Nuevo Servicio Disponible*\n\n🚗 *Vehículo:* ${vehicleInfo}\n\n¿Desea tomar este servicio?`;
-        
-        // Botones de acción
-        const inlineKeyboard = {
-          inline_keyboard: [
-            [
-              { text: "✅ Tomar Servicio", callback_data: `take_service:${serviceId}` },
-              { text: "❌ Rechazar", callback_data: `reject_service:${serviceId}` }
-            ]
-          ]
-        };
-        
-        // Enviar mensaje inicial
-        queue.enqueue(
-          config.TELEGRAM_GROUP_ID,
-          async () => {
-            await bot.sendMessage(
-              config.TELEGRAM_GROUP_ID, 
-              initialMessage, 
-              { 
-                parse_mode: 'Markdown',
-                reply_markup: JSON.stringify(inlineKeyboard)
-              }
-            );
-          },
-          'Envío de mensaje inicial simplificado',
-          { priority: true }
-        );
+        if (serviceCache) {
+          const serviceData = {
+            id: serviceId,
+            messages: messages,
+            timestamp: Date.now(),
+            origin: chatId,
+            hasUrl: false,        // Flag para URL
+            hasTimings: false,    // Flag para tiempos
+            showButtons: false    // Flag para botones
+          };
+          
+          serviceCache.storeService(serviceId, serviceData);
+          
+          // Obtener solo la información del vehículo (segundo mensaje)
+          const vehicleInfo = messages.length > 1 ? messages[1] : "No hay información del vehículo";
+          
+          // Crear mensaje SIN botones inicialmente
+          const initialMessage = `🚨 *Nuevo Servicio Disponible*\n\n🚗 *Vehículo:* ${vehicleInfo}\n\n⏳ *Esperando URL y tiempos de llegada...*`;
+          
+          // Enviar mensaje inicial
+          const sentMsg = await bot.sendMessage(
+            config.TELEGRAM_GROUP_ID, 
+            initialMessage, 
+            { parse_mode: 'Markdown' }
+          );
+          
+          // Guardar referencia al mensaje para actualizarlo después
+          serviceData.messageId = sentMsg.message_id;
+          serviceCache.storeService(serviceId, serviceData);
+        } else {
+          // Caer al método legacy si no hay caché
+          this._handleExtractedDataLegacy(bot, chatId, messages);
+        }
         
         // Confirmación al usuario
         await bot.sendMessage(chatId, '✅ Datos enviados correctamente al grupo de control.');
         
       } catch (error) {
         Logger.logError('Error al enviar datos simplificados', error, 'ServiceHandler');
-        await bot.sendMessage(chatId, `❌ Error al enviar los datos: ${error.message}`);
+        // Caer al método legacy
+        this._handleExtractedDataLegacy(bot, chatId, messages);
       }
     } else if (messages.length > 0) {
       // Si no hay grupo configurado, enviar al usuario directamente

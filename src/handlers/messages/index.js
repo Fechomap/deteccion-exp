@@ -4,13 +4,15 @@
 const Logger = require('../../utils/logger');
 const MapsMessageHandler = require('./maps.handler');
 const ServiceMessageHandler = require('./service.handler');
+const TimingDetectorHandler = require('./timing-detector.handler');
 
 class MessageHandlerRegistry {
   constructor(services) {
     this.services = services;
     this.handlers = [
       new MapsMessageHandler(services),
-      new ServiceMessageHandler(services)
+      new ServiceMessageHandler(services),
+      new TimingDetectorHandler(services)
     ];
     
     Logger.info(`Registrados ${this.handlers.length} manejadores de mensajes`, 'MessageRegistry');
