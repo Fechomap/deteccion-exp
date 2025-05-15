@@ -1,3 +1,4 @@
+// src/handlers/messages/maps.handler.js
 /**
  * Manejador especializado en URLs de Google Maps
  */
@@ -110,12 +111,25 @@ class MapsMessageHandler extends BaseMessageHandler {
             serviceData.hasUrl = true;
             serviceCache.storeService(pendingService, serviceData);
             
-            // Actualizar mensaje con URL
+            // Actualizar mensaje con URL Y BOTONES INMEDIATAMENTE
             const vehicleInfo = serviceData.messages && serviceData.messages.length > 1 ? 
                                 serviceData.messages[1] : "No hay información del vehículo";
             
-            // Mensaje actualizado con URL pero SIN botones aún
-            const updatedMessage = `🚨 *Nuevo Servicio Disponible*\n\n🚗 *Vehículo:* ${vehicleInfo}\n\n🗺️ [Ver en Google Maps](${text})\n\n⏳ *Esperando tiempos de llegada...*`;
+            // CAMBIO: Mensaje con botones inmediatamente después de la URL
+            const updatedMessage = `🚨 *Nuevo Servicio Disponible*\n\n` +
+                                  `🚗 *Vehículo:* ${vehicleInfo}\n\n` +
+                                  `🗺️ [Ver en Google Maps](${text})\n\n` +
+                                  `¿Desea tomar este servicio?`;
+            
+            // Botones de acción
+            const inlineKeyboard = {
+              inline_keyboard: [
+                [
+                  { text: "✅ Tomar Servicio", callback_data: `take_service:${serviceData.id}` },
+                  { text: "❌ Rechazar", callback_data: `reject_service:${serviceData.id}` }
+                ]
+              ]
+            };
             
             // Actualizar mensaje si existe ID
             if (serviceData.messageId) {
@@ -124,37 +138,89 @@ class MapsMessageHandler extends BaseMessageHandler {
                   chat_id: config.TELEGRAM_GROUP_ID,
                   message_id: serviceData.messageId,
                   parse_mode: 'Markdown',
-                  disable_web_page_preview: false
+                  disable_web_page_preview: false,
+                  reply_markup: inlineKeyboard // Botones inmediatos
                 });
+                
+                Logger.info(`Mensaje actualizado con URL y botones para servicio ${pendingService}`, 'MapsHandler');
               } catch (editError) {
                 Logger.logError('Error al editar mensaje', editError, 'MapsHandler');
               }
             }
             
-            // Solicitar timing
+            // Solicitar timing en segundo plano (ya no esperamos por él para mostrar botones)
             if (coordinates.length > 0) {
-              // Flag para indicar que estamos esperando tiempos para este servicio
-              serviceData.waitingForTiming = true;
-              serviceCache.storeService(pendingService, serviceData);
+              // Ya no marcamos como esperando timing, pues los botones ya están mostrados
+              Logger.info(`Solicitando timing para coordenadas ${coordinates[0]} (en segundo plano)`, 'MapsHandler');
               
-              // Solicitar timing y guardar el chatId para identificar la respuesta después
-              await recLocation.requestTimingReport(coordinates[0], config.TELEGRAM_GROUP_ID);
+              try {
+                // Solicitar timing pero ya no dependemos de él para actualizar la UI
+                await recLocation.requestTimingReport(coordinates[0], config.TELEGRAM_GROUP_ID);
+                Logger.info(`Timing solicitado exitosamente para servicio ${pendingService}`, 'MapsHandler');
+              } catch (timingError) {
+                Logger.logError('Error al solicitar timing', timingError, 'MapsHandler');
+                // No es crítico porque los botones ya se mostraron
+              }
             }
             
-            await bot.sendMessage(chatId, '✅ URL y coordenadas agregadas al servicio pendiente.');
+            await bot.sendMessage(chatId, '✅ URL y coordenadas agregadas al servicio. Los botones de acción ya están disponibles.');
             return;
           }
         } else {
-          // No hay servicio pendiente, crear uno nuevo con solo URL
-          // Implementación similar al caso anterior...
+          // No hay servicio pendiente, enviar las coordenadas directamente
+          Logger.info(`No se encontró servicio pendiente para chat ${chatId}, enviando coordenadas directamente`, 'MapsHandler');
+          
+          // Fallback a método legacy
+          await this._sendCoordinatesDirectly(bot, chatId, coordinates, text);
         }
       } catch (error) {
         Logger.logError('Error al procesar coordenadas con caché', error, 'MapsHandler');
-        this._handleFoundCoordinatesLegacy(bot, msg, coordinates);
+        // Fallback a método legacy
+        await this._sendCoordinatesDirectly(bot, chatId, coordinates, text);
       }
     } else {
-      // Método legacy
-      this._handleFoundCoordinatesLegacy(bot, msg, coordinates);
+      // Fallback a método legacy
+      await this._sendCoordinatesDirectly(bot, chatId, coordinates, text);
+    }
+  }
+  
+  /**
+   * Envía las coordenadas directamente (método legacy)
+   * @private
+   * @param {Object} bot - Instancia del bot
+   * @param {string} chatId - ID del chat
+   * @param {string[]} coordinates - Coordenadas encontradas
+   * @param {string} originalUrl - URL original
+   */
+  async _sendCoordinatesDirectly(bot, chatId, coordinates, originalUrl) {
+    const { recLocation, config } = this.services;
+    
+    // Informar de las coordenadas encontradas
+    await bot.sendMessage(chatId, `✅ Coordenadas extraídas:`)
+      .catch(error => Logger.logError('Error al enviar mensaje', error, 'MapsHandler'));
+    
+    // Enviar cada coordenada
+    for (const coordinate of coordinates) {
+      await bot.sendMessage(chatId, coordinate)
+        .catch(error => Logger.logError('Error al enviar coordenada', error, 'MapsHandler'));
+    }
+    
+    // Solicitar tiempos de llegada si está configurado
+    if (coordinates.length > 0 && recLocation) {
+      try {
+        await bot.sendMessage(chatId, '⏳ Solicitando tiempos de llegada...')
+          .catch(error => Logger.logError('Error al enviar mensaje', error, 'MapsHandler'));
+        
+        await recLocation.requestTimingReport(coordinates[0], config.TELEGRAM_GROUP_ID);
+        
+        await bot.sendMessage(chatId, '✅ Tiempos de llegada solicitados. Los resultados se enviarán pronto.')
+          .catch(error => Logger.logError('Error al enviar mensaje', error, 'MapsHandler'));
+      } catch (error) {
+        Logger.logError('Error al solicitar tiempos de llegada', error, 'MapsHandler');
+        
+        await bot.sendMessage(chatId, `❌ Error al solicitar tiempos de llegada: ${error.message}`)
+          .catch(err => Logger.logError('Error al enviar mensaje de error', err, 'MapsHandler'));
+      }
     }
   }
 
@@ -162,16 +228,20 @@ class MapsMessageHandler extends BaseMessageHandler {
   _findPendingServiceForChat(chatId) {
     const { serviceCache } = this.services;
     
-    // Buscar en los servicios almacenados
-    for (const [serviceId, data] of serviceCache.serviceCache.entries()) {
-      if (data.origin === chatId && 
-          Date.now() - data.timestamp < 30 * 60 * 1000 && // Menos de 30 minutos
-          (!data.url || !data.coordinates || data.messages.length === 0)) {
-        return serviceId;
-      }
+    // Buscar en los servicios almacenados (más recientes primero)
+    const services = Array.from(serviceCache.serviceCache.entries())
+      .filter(([id, data]) => 
+        data.origin === chatId && 
+        Date.now() - data.timestamp < 30 * 60 * 1000)  // Menos de 30 minutos
+      .sort((a, b) => b[1].timestamp - a[1].timestamp);  // Ordenar por tiempo, más reciente primero
+    
+    // Imprimir información para debugging
+    for (const [id, data] of services) {
+      Logger.info(`Servicio candidato encontrado: ${id}, timestamp: ${new Date(data.timestamp).toISOString()}`, 'MapsHandler');
     }
     
-    return null;
+    // Devolver el primero que encontremos
+    return services.length > 0 ? services[0][0] : null;
   }
   
   /**

@@ -1,3 +1,4 @@
+// src/handlers/messages/service.handler.js
 /**
  * Manejador especializado en texto de servicios
  */
@@ -126,9 +127,8 @@ class ServiceMessageHandler extends BaseMessageHandler {
             messages: messages,
             timestamp: Date.now(),
             origin: chatId,
-            hasUrl: false,        // Flag para URL
-            hasTimings: false,    // Flag para tiempos
-            showButtons: false    // Flag para botones
+            hasUrl: false,
+            coordinates: []
           };
           
           serviceCache.storeService(serviceId, serviceData);
@@ -136,8 +136,8 @@ class ServiceMessageHandler extends BaseMessageHandler {
           // Obtener solo la información del vehículo (segundo mensaje)
           const vehicleInfo = messages.length > 1 ? messages[1] : "No hay información del vehículo";
           
-          // Crear mensaje SIN botones inicialmente
-          const initialMessage = `🚨 *Nuevo Servicio Disponible*\n\n🚗 *Vehículo:* ${vehicleInfo}\n\n⏳ *Esperando URL y tiempos de llegada...*`;
+          // Crear mensaje inicial sin botones (se añadirán cuando se procese la URL)
+          const initialMessage = `🚨 *Nuevo Servicio Disponible*\n\n🚗 *Vehículo:* ${vehicleInfo}\n\n⏳ *Esperando URL de Google Maps...*`;
           
           // Enviar mensaje inicial
           const sentMsg = await bot.sendMessage(
@@ -149,18 +149,32 @@ class ServiceMessageHandler extends BaseMessageHandler {
           // Guardar referencia al mensaje para actualizarlo después
           serviceData.messageId = sentMsg.message_id;
           serviceCache.storeService(serviceId, serviceData);
+          
+          Logger.info(`Mensaje inicial creado para servicio ${serviceId}`, 'ServiceHandler');
         } else {
-          // Caer al método legacy si no hay caché
-          this._handleExtractedDataLegacy(bot, chatId, messages);
+          // Método legacy si no hay caché
+          for (const message of messages) {
+            queue.enqueue(
+              config.TELEGRAM_GROUP_ID,
+              async () => await bot.sendMessage(config.TELEGRAM_GROUP_ID, message),
+              `Mensaje a grupo: ${message.substr(0, 30)}...`,
+              {}
+            );
+          }
         }
         
         // Confirmación al usuario
-        await bot.sendMessage(chatId, '✅ Datos enviados correctamente al grupo de control.');
+        await bot.sendMessage(chatId, '✅ Datos extraídos correctamente. Por favor, envía ahora la URL de Google Maps para completar el servicio.');
         
       } catch (error) {
-        Logger.logError('Error al enviar datos simplificados', error, 'ServiceHandler');
-        // Caer al método legacy
-        this._handleExtractedDataLegacy(bot, chatId, messages);
+        Logger.logError('Error al enviar datos al grupo', error, 'ServiceHandler');
+        
+        // Enviar al usuario directamente como fallback
+        await bot.sendMessage(chatId, '📋 *Datos extraídos:*', { parse_mode: 'Markdown' });
+        
+        for (const message of messages) {
+          await bot.sendMessage(chatId, message);
+        }
       }
     } else if (messages.length > 0) {
       // Si no hay grupo configurado, enviar al usuario directamente
