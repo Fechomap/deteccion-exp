@@ -92,70 +92,111 @@ class MapsMessageHandler extends BaseMessageHandler {
   async _handleFoundCoordinates(bot, msg, coordinates) {
     const chatId = msg.chat.id;
     const text = msg.text;
-    const { queue, recLocation, config } = this.services;
+    const { queue, recLocation, config, serviceCache } = this.services;
     
-    Logger.info(`Coordenadas encontradas: ${coordinates.join(', ')}`, 'MapsHandler');
+    // Buscar servicio pendiente para este chat
+    const pendingService = this._findPendingServiceForChat(chatId);
     
-    // Generar ID único para este grupo de mensajes
-    const coordGroupId = `coords_${Date.now()}_${chatId}`;
-    
-    if (config.TELEGRAM_GROUP_ID) {
-      try {
-        // Encolar envío de URL original
-        queue.enqueue(
-          config.TELEGRAM_GROUP_ID,
-          async () => {
-            await bot.sendMessage(config.TELEGRAM_GROUP_ID, text);
-            Logger.info('URL enviada al grupo', 'MapsHandler');
-          },
-          'Envío de URL original',
-          { groupId: coordGroupId }
-        );
+    if (pendingService) {
+      // Actualizar servicio con URL y coordenadas
+      const serviceData = serviceCache.getService(pendingService);
+      if (serviceData) {
+        serviceData.url = text;
+        serviceData.coordinates = coordinates;
+        serviceCache.storeService(pendingService, serviceData);
         
-        // Encolar envío de coordenadas
-        for (const coord of coordinates) {
-          queue.enqueue(
-            config.TELEGRAM_GROUP_ID,
-            async () => {
-              await bot.sendMessage(config.TELEGRAM_GROUP_ID, coord);
-              Logger.info(`Coordenada enviada al grupo: ${coord}`, 'MapsHandler');
-            },
-            `Envío de coordenada: ${coord}`,
-            { groupId: coordGroupId }
-          );
+        // Actualizar mensaje con URL
+        const vehicleInfo = serviceData.messages.length > 1 ? serviceData.messages[1] : "No hay información del vehículo";
+        const updatedMessage = `🚨 *Nuevo Servicio Disponible*\n\n🚗 *Vehículo:* ${vehicleInfo}\n\n🗺️ [Ver en Google Maps](${text})\n\n¿Desea tomar este servicio?`;
+        
+        // Actualizar mensaje si existe
+        if (serviceData.messageId) {
+          await bot.editMessageText(updatedMessage, {
+            chat_id: config.TELEGRAM_GROUP_ID,
+            message_id: serviceData.messageId,
+            parse_mode: 'Markdown',
+            disable_web_page_preview: false,
+            reply_markup: JSON.stringify({
+              inline_keyboard: [
+                [
+                  { text: "✅ Tomar Servicio", callback_data: `take_service:${pendingService}` },
+                  { text: "❌ Rechazar", callback_data: `reject_service:${pendingService}` }
+                ]
+              ]
+            })
+          });
         }
         
-        // Encolar solicitud de timing si hay coordenadas
+        // Solicitar timing
         if (coordinates.length > 0) {
-          queue.enqueue(
-            config.TELEGRAM_GROUP_ID,
-            async () => {
-              // Mensaje de cálculo de tiempos
-              await bot.sendMessage(config.TELEGRAM_GROUP_ID, '⏱️ *Calculando tiempos de llegada...*', { parse_mode: 'Markdown' });
-              
-              // Solicitar timing a RecLocation
-              Logger.info(`Solicitando timing para: ${coordinates[0]}`, 'MapsHandler');
-              await recLocation.requestTimingReport(coordinates[0], config.TELEGRAM_GROUP_ID);
-            },
-            'Solicitud de timing para coordenadas',
-            { groupId: coordGroupId }
-          );
+          await recLocation.requestTimingReport(coordinates[0], config.TELEGRAM_GROUP_ID);
         }
         
-        // Completar el grupo
-        queue.completeGroup(coordGroupId, config.TELEGRAM_GROUP_ID, false);
-        
-        // Enviar confirmación al usuario
-        await bot.sendMessage(chatId, '✅ URL y coordenadas enviadas correctamente al grupo de control.');
-        Logger.info('Procesamiento de coordenadas completado', 'MapsHandler');
-      } catch (error) {
-        Logger.logError('Error al procesar URL de Google Maps', error, 'MapsHandler');
-        await bot.sendMessage(chatId, `❌ Error al procesar las coordenadas: ${error.message}`);
+        await bot.sendMessage(chatId, '✅ URL y coordenadas agregadas al servicio pendiente.');
       }
     } else {
-      // Si no hay grupo configurado, solo enviar al usuario
-      await bot.sendMessage(chatId, `📍 Coordenadas encontradas: ${coordinates.join('\n')}`);
+      // Crear nuevo servicio con solo URL y coordenadas
+      const serviceId = `map_${Date.now()}_${chatId}`;
+      
+      const serviceData = {
+        id: serviceId,
+        url: text,
+        coordinates: coordinates,
+        messages: [],
+        timestamp: Date.now(),
+        origin: chatId
+      };
+      
+      serviceCache.storeService(serviceId, serviceData);
+      
+      // Mensaje simplificado con URL
+      const initialMessage = `🚨 *Nuevo Servicio Disponible*\n\n🗺️ [Ver en Google Maps](${text})\n\n⚠️ *Esperando datos del vehículo*\n\n¿Desea tomar este servicio?`;
+      
+      // Enviar al grupo
+      const sentMessage = await bot.sendMessage(
+        config.TELEGRAM_GROUP_ID, 
+        initialMessage, 
+        { 
+          parse_mode: 'Markdown',
+          disable_web_page_preview: false,
+          reply_markup: JSON.stringify({
+            inline_keyboard: [
+              [
+                { text: "✅ Tomar Servicio", callback_data: `take_service:${serviceId}` },
+                { text: "❌ Rechazar", callback_data: `reject_service:${serviceId}` }
+              ]
+            ]
+          })
+        }
+      );
+      
+      // Guardar ID del mensaje
+      serviceData.messageId = sentMessage.message_id;
+      serviceCache.storeService(serviceId, serviceData);
+      
+      // Solicitar timing
+      if (coordinates.length > 0) {
+        await recLocation.requestTimingReport(coordinates[0], config.TELEGRAM_GROUP_ID);
+      }
+      
+      await bot.sendMessage(chatId, '✅ URL y coordenadas enviadas. Ahora envía el texto del servicio.');
     }
+  }
+
+  // Método auxiliar para encontrar servicios pendientes
+  _findPendingServiceForChat(chatId) {
+    const { serviceCache } = this.services;
+    
+    // Buscar en los servicios almacenados
+    for (const [serviceId, data] of serviceCache.serviceCache.entries()) {
+      if (data.origin === chatId && 
+          Date.now() - data.timestamp < 30 * 60 * 1000 && // Menos de 30 minutos
+          (!data.url || !data.coordinates || data.messages.length === 0)) {
+        return serviceId;
+      }
+    }
+    
+    return null;
   }
   
   /**

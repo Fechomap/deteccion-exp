@@ -11,6 +11,8 @@ const ProcessingStateService = require('./services/processing-state.service');
 const CoordinatesUtil = require('./utils/coordinates');
 const CommandRegistry = require('./handlers/commands');
 const MessageHandlerRegistry = require('./handlers/messages');
+const ServiceActionHandler = require('./handlers/callbacks/service-action.handler');
+const ServiceCacheService = require('./services/service-cache.service'); // Importar el servicio de caché
 
 /**
  * Función principal que inicializa la aplicación
@@ -32,7 +34,8 @@ async function main() {
       openai: OpenAIService,
       recLocation: RecLocationService,
       processingState: ProcessingStateService,
-      coordinatesUtil: CoordinatesUtil
+      coordinatesUtil: CoordinatesUtil,
+      serviceCache: ServiceCacheService // Añadir el servicio de caché aquí
     };
     
     // Inicializar registros de manejadores
@@ -54,6 +57,10 @@ async function main() {
     // Registrar manejadores
     commandRegistry.register(bot);
     messageRegistry.register(bot);
+    
+    // Registrar manejador de callbacks para los botones de servicio
+    const serviceActionHandler = new ServiceActionHandler(services);
+    serviceActionHandler.register(bot);
     
     // Log de información de configuración
     Logger.info(`Configuración de IDs de chat - Detección-Exp: ${config.TELEGRAM_GROUP_ID}, RecLocation: ${config.RECLOCATION_GROUP_ID}`, 'Init');

@@ -111,55 +111,61 @@ class ServiceMessageHandler extends BaseMessageHandler {
    * @param {string[]} messages - Mensajes a enviar
    */
   async _handleExtractedData(bot, chatId, messages) {
-    const { queue, config } = this.services;
+    const { queue, config, serviceCache } = this.services;
     
-    // Generar ID único para este grupo de mensajes
-    const serviceGroupId = `service_${Date.now()}_${chatId}`;
+    // Generar ID único para este servicio
+    const serviceId = `service_${Date.now()}_${chatId}`;
     
-    // Enviar mensajes al grupo si está configurado
     if (config.TELEGRAM_GROUP_ID && messages.length > 0) {
       try {
-        // Encolar alertas iniciales
+        // Almacenar todos los datos en el caché
+        const serviceData = {
+          id: serviceId,
+          messages: messages,
+          timestamp: Date.now(),
+          origin: chatId
+        };
+        
+        serviceCache.storeService(serviceId, serviceData);
+        
+        // Obtener solo la información del vehículo (segundo mensaje)
+        const vehicleInfo = messages.length > 1 ? messages[1] : "No hay información del vehículo";
+        
+        // Crear mensaje con solo la información clave y botones
+        const initialMessage = `🚨 *Nuevo Servicio Disponible*\n\n🚗 *Vehículo:* ${vehicleInfo}\n\n¿Desea tomar este servicio?`;
+        
+        // Botones de acción
+        const inlineKeyboard = {
+          inline_keyboard: [
+            [
+              { text: "✅ Tomar Servicio", callback_data: `take_service:${serviceId}` },
+              { text: "❌ Rechazar", callback_data: `reject_service:${serviceId}` }
+            ]
+          ]
+        };
+        
+        // Enviar mensaje inicial
         queue.enqueue(
           config.TELEGRAM_GROUP_ID,
-          async () => await bot.sendMessage(config.TELEGRAM_GROUP_ID, '🚨👀 Oigan...'),
-          'Alerta inicial',
-          { groupId: serviceGroupId }
+          async () => {
+            await bot.sendMessage(
+              config.TELEGRAM_GROUP_ID, 
+              initialMessage, 
+              { 
+                parse_mode: 'Markdown',
+                reply_markup: JSON.stringify(inlineKeyboard)
+              }
+            );
+          },
+          'Envío de mensaje inicial simplificado',
+          { priority: true }
         );
         
-        queue.enqueue(
-          config.TELEGRAM_GROUP_ID,
-          async () => await bot.sendMessage(config.TELEGRAM_GROUP_ID, '⚠️📍 Hay un posible servicio de *CHUBB*', { parse_mode: 'Markdown' }),
-          'Alerta CHUBB',
-          { groupId: serviceGroupId }
-        );
+        // Confirmación al usuario
+        await bot.sendMessage(chatId, '✅ Datos enviados correctamente al grupo de control.');
         
-        queue.enqueue(
-          config.TELEGRAM_GROUP_ID,
-          async () => await bot.sendMessage(config.TELEGRAM_GROUP_ID, '🚗💨 ¿A alguien le queda?', { parse_mode: 'Markdown' }),
-          'Pregunta disponibilidad',
-          { groupId: serviceGroupId }
-        );
-        
-        // Encolar cada mensaje de datos
-        for (let i = 0; i < messages.length; i++) {
-          const message = messages[i];
-          queue.enqueue(
-            config.TELEGRAM_GROUP_ID,
-            async () => await bot.sendMessage(config.TELEGRAM_GROUP_ID, message),
-            `Dato ${i+1}: ${message.substr(0, 30)}${message.length > 30 ? '...' : ''}`,
-            { groupId: serviceGroupId }
-          );
-        }
-        
-        // Completar el grupo para procesamiento atómico
-        queue.completeGroup(serviceGroupId, config.TELEGRAM_GROUP_ID, true);
-        
-        // Enviar confirmación al usuario
-        await bot.sendMessage(chatId, '✅ Los datos del vehículo han sido enviados correctamente al grupo de control.');
-        Logger.info('Datos extraídos enviados exitosamente', 'ServiceHandler');
       } catch (error) {
-        Logger.logError('Error al enviar datos extraídos', error, 'ServiceHandler');
+        Logger.logError('Error al enviar datos simplificados', error, 'ServiceHandler');
         await bot.sendMessage(chatId, `❌ Error al enviar los datos: ${error.message}`);
       }
     } else if (messages.length > 0) {
