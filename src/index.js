@@ -1,5 +1,5 @@
 /**
- * Punto de entrada principal de la aplicación
+ * Inicialización y configuración de componentes
  */
 const config = require('./config');
 const Logger = require('./utils/logger');
@@ -13,21 +13,18 @@ const CommandRegistry = require('./handlers/commands');
 const MessageHandlerRegistry = require('./handlers/messages');
 
 /**
- * Función principal que inicia la aplicación
+ * Función principal que inicializa la aplicación
  */
 async function main() {
-  Logger.info('Iniciando aplicación con arquitectura refactorizada...', 'Main');
+  Logger.info('Configurando componentes de la aplicación...', 'Init');
   
   // Validar configuración
   if (!config.isValid) {
-    Logger.error('Configuración inválida. Abortando.', 'Main');
+    Logger.error('Configuración inválida. Abortando.', 'Init');
     process.exit(1);
   }
   
   try {
-    // Inicializar servicios
-    Logger.info('Inicializando servicios...', 'Main');
-    
     // Agrupar servicios para inyección de dependencias
     const services = {
       config,
@@ -47,7 +44,7 @@ async function main() {
       try {
         await RecLocationService.checkConnectivity();
       } catch (error) {
-        Logger.warn(`No se pudo verificar la conectividad con RecLocation API: ${error.message}`, 'Main');
+        Logger.warn(`No se pudo verificar la conectividad con RecLocation API: ${error.message}`, 'Init');
       }
     }, 1000);
     
@@ -59,28 +56,14 @@ async function main() {
     messageRegistry.register(bot);
     
     // Log de información de configuración
-    Logger.info(`Configuración de IDs de chat - Detección-Exp: ${config.TELEGRAM_GROUP_ID}, RecLocation: ${config.RECLOCATION_GROUP_ID}`, 'Main');
-    Logger.info('Sistema de cola de mensajes activado para garantizar el orden correcto de entrega', 'Main');
-    Logger.info('Bot de Telegram iniciado con arquitectura refactorizada. Presiona Ctrl+C para detener.', 'Main');
+    Logger.info(`Configuración de IDs de chat - Detección-Exp: ${config.TELEGRAM_GROUP_ID}, RecLocation: ${config.RECLOCATION_GROUP_ID}`, 'Init');
+    Logger.info('Sistema de cola de mensajes activado para entrega ordenada de mensajes', 'Init');
+    Logger.info('Componentes inicializados correctamente', 'Init');
   } catch (error) {
-    Logger.logError('Error al iniciar la aplicación', error, 'Main');
+    Logger.logError('Error al inicializar los componentes', error, 'Init');
     process.exit(1);
   }
 }
 
-// Manejar excepciones no capturadas
-process.on('uncaughtException', (error) => {
-  Logger.logError('Excepción no capturada', error, 'Main');
-  // En producción, podríamos querer reiniciar en lugar de terminar
-  if (config.NODE_ENV === 'production') {
-    Logger.error('Excepción no capturada en producción, reiniciando...', 'Main');
-    process.exit(1);  // PM2 u otro gestor de procesos reiniciará la aplicación
-  }
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  Logger.error(`Promesa rechazada no manejada en: ${promise}, razón: ${reason}`, 'Main');
-});
-
-// Iniciar la aplicación
+// Ejecutar función principal
 main();
