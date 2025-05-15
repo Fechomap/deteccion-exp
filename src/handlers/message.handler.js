@@ -97,29 +97,28 @@ class MessageHandler {
         }
       }
       
-      // Enviar cada coordenada al grupo y una confirmación al origen
-      for (const coord of coordinates) {
-        try {
-          await ChatUtils.sendToGroupWithConfirmation(
-            bot, 
-            chatId, 
-            coord, 
-            config.TELEGRAM_GROUP_ID, 
-            '✅ Coordenadas enviadas correctamente al grupo de control.'
-          );
-        } catch (error) {
-          Logger.logError(`Error al enviar coordenada: ${coord}`, error, 'MessageHandler');
+      // Enviar todas las coordenadas al grupo destino
+      if (config.TELEGRAM_GROUP_ID) {
+        for (const coord of coordinates) {
+          try {
+            await bot.sendMessage(config.TELEGRAM_GROUP_ID, coord);
+            Logger.info(`Coordenada enviada al grupo: ${coord}`, 'MessageHandler');
+          } catch (error) {
+            Logger.logError(`Error al enviar coordenada: ${coord}`, error, 'MessageHandler');
+          }
         }
+        
+        // Enviar solo UNA confirmación para todas las coordenadas
+        await bot.sendMessage(chatId, '✅ Coordenadas enviadas correctamente al grupo de control.');
+        Logger.info('Confirmación de coordenadas enviada al usuario', 'MessageHandler');
       }
       
       // INTEGRACIÓN: Solicitar automáticamente el timing para la primera coordenada
-      if (coordinates.length > 0) {
+      if (coordinates.length > 0 && config.TELEGRAM_GROUP_ID) {
         try {
           // CAMBIO DE ORDEN: Primero enviar mensaje de "Calculando tiempos de llegada..."
-          if (config.TELEGRAM_GROUP_ID) {
-            await bot.sendMessage(config.TELEGRAM_GROUP_ID, '⏱️ *Calculando tiempos de llegada...*', { parse_mode: 'Markdown' });
-            Logger.info('Mensaje de cálculo de tiempos enviado', 'MessageHandler');
-          }
+          await bot.sendMessage(config.TELEGRAM_GROUP_ID, '⏱️ *Calculando tiempos de llegada...*', { parse_mode: 'Markdown' });
+          Logger.info('Mensaje de cálculo de tiempos enviado', 'MessageHandler');
           
           // Luego hacer la solicitud a RecLocation
           Logger.info(`Solicitando automáticamente timing para coordenada: ${coordinates[0]}`, 'MessageHandler');
