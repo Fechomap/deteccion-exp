@@ -5,6 +5,7 @@ const config = require('./config');
 const Logger = require('./utils/logger');
 const TelegramService = require('./services/telegram.service');
 const RecLocationService = require('./services/reclocation.service');
+const MessageQueueService = require('./services/message-queue.service');
 
 /**
  * Función principal que inicia la aplicación
@@ -19,6 +20,11 @@ async function main() {
   }
   
   try {
+    // Inicializar servicio de cola de mensajes
+    Logger.info('Inicializando servicio de cola de mensajes...', 'Main');
+    // No es necesario inicializar explícitamente ya que es una instancia singleton
+    Logger.info('Servicio de cola de mensajes inicializado correctamente.', 'Main');
+    
     // Verificar conectividad con RecLocation API
     setTimeout(async () => {
       try {
@@ -33,7 +39,8 @@ async function main() {
     
     // Log de información de configuración
     Logger.info(`Configuración de IDs de chat - Detección-Exp: ${config.TELEGRAM_GROUP_ID}, RecLocation: ${config.RECLOCATION_GROUP_ID}`, 'Main');
-    Logger.info('Bot de Telegram iniciado. Presiona Ctrl+C para detener.', 'Main');
+    Logger.info('Sistema de cola de mensajes activado para garantizar el orden correcto de entrega', 'Main');
+    Logger.info('Bot de Telegram iniciado con gestión de flujo mejorada. Presiona Ctrl+C para detener.', 'Main');
   } catch (error) {
     Logger.logError('Error al iniciar la aplicación', error, 'Main');
     process.exit(1);

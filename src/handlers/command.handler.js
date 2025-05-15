@@ -4,6 +4,7 @@
 const Logger = require('../utils/logger');
 const ChatUtils = require('../utils/chat');
 const RecLocationService = require('../services/reclocation.service');
+const MessageQueueService = require('../services/message-queue.service');
 const config = require('../config');
 
 class CommandHandler {
@@ -16,6 +17,8 @@ class CommandHandler {
     this._registerHelpCommand(bot);
     this._registerChatIdCommand(bot);
     this._registerTestTimingCommand(bot);
+    this._registerQueueStatusCommand(bot);
+    this._registerClearQueueCommand(bot);
     
     Logger.info('Manejadores de comandos registrados', 'CommandHandler');
   }
@@ -80,7 +83,9 @@ class CommandHandler {
         '• Usuario/Cliente\n' +
         '• Cuenta\n' +
         '• Entre calles (si está disponible)\n' +
-        '• Referencia (si está disponible)',
+        '• Referencia (si está disponible)\n\n' +
+        '⚠️ *IMPORTANTE*\n' +
+        'Si estás procesando texto con ChatGPT, cualquier enlace o mensaje adicional se pondrá en cola y se enviará después de que se complete el procesamiento actual.',
         { parse_mode: 'Markdown' }
       ).then(() => Logger.info('Mensaje de ayuda enviado', 'CommandHandler'))
        .catch(error => Logger.logError('Error al enviar mensaje', error, 'CommandHandler'));
@@ -150,6 +155,74 @@ class CommandHandler {
       } catch (error) {
         await bot.sendMessage(chatId, `❌ Error al probar integración: ${error.message}`, { parse_mode: 'Markdown' });
       }
+    });
+  }
+  
+  /**
+   * Registra el comando /colaestado para verificar el estado de la cola
+   * @private
+   * @param {TelegramBot} bot - Instancia del bot
+   */
+  static _registerQueueStatusCommand(bot) {
+    bot.onText(/\/colaestado/, async (msg) => {
+      const chatId = msg.chat.id;
+      const info = ChatUtils.getChatInfo(msg);
+      
+      Logger.info(`Comando /colaestado recibido:
+        Chat ID: ${chatId}
+        Tipo: ${info.chat.type}
+        De: ${info.chat.type === 'private' ? `${info.from.firstName} ${info.from.lastName}` : info.chat.title}`, 'CommandHandler');
+      
+      // Obtener el estado de la cola
+      const queueLength = MessageQueueService.getQueueLength(chatId);
+      const isProcessing = MessageQueueService.isProcessing(chatId);
+      
+      // Construir mensaje de estado
+      let response = `📊 *Estado de la cola de mensajes:*\n\n`;
+      response += `• *Chat ID:* \`${chatId}\`\n`;
+      response += `• *Estado:* ${isProcessing ? '🔄 Procesando' : '✅ Libre'}\n`;
+      response += `• *Mensajes en cola:* ${queueLength}\n`;
+      
+      // Verificar también la cola del grupo
+      if (config.TELEGRAM_GROUP_ID) {
+        const groupQueueLength = MessageQueueService.getQueueLength(config.TELEGRAM_GROUP_ID);
+        const groupIsProcessing = MessageQueueService.isProcessing(config.TELEGRAM_GROUP_ID);
+        
+        response += `\n📊 *Estado de la cola del grupo:*\n\n`;
+        response += `• *Grupo ID:* \`${config.TELEGRAM_GROUP_ID}\`\n`;
+        response += `• *Estado:* ${groupIsProcessing ? '🔄 Procesando' : '✅ Libre'}\n`;
+        response += `• *Mensajes en cola:* ${groupQueueLength}\n`;
+      }
+      
+      // Enviar mensaje con información
+      bot.sendMessage(chatId, response, { parse_mode: 'Markdown' })
+        .then(() => Logger.info(`Estado de cola enviado a ${chatId}`, 'CommandHandler'))
+        .catch(error => Logger.logError('Error al enviar estado de cola', error, 'CommandHandler'));
+    });
+  }
+  
+  /**
+   * Registra el comando /colalimpiar para limpiar la cola
+   * @private
+   * @param {TelegramBot} bot - Instancia del bot
+   */
+  static _registerClearQueueCommand(bot) {
+    bot.onText(/\/colalimpiar/, async (msg) => {
+      const chatId = msg.chat.id;
+      const info = ChatUtils.getChatInfo(msg);
+      
+      Logger.info(`Comando /colalimpiar recibido:
+        Chat ID: ${chatId}
+        Tipo: ${info.chat.type}
+        De: ${info.chat.type === 'private' ? `${info.from.firstName} ${info.from.lastName}` : info.chat.title}`, 'CommandHandler');
+      
+      // Limpiar la cola del chat actual
+      MessageQueueService.clearQueue(chatId);
+      
+      // Enviar confirmación
+      bot.sendMessage(chatId, '🧹 Cola de mensajes limpiada correctamente.', { parse_mode: 'Markdown' })
+        .then(() => Logger.info(`Cola limpiada para ${chatId}`, 'CommandHandler'))
+        .catch(error => Logger.logError('Error al enviar confirmación de limpieza', error, 'CommandHandler'));
     });
   }
 }
