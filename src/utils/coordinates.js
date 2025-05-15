@@ -1,5 +1,5 @@
 /**
- * Módulo para extraer coordenadas de URLs de Google Maps
+ * Utilidad para extraer coordenadas de URLs de Google Maps
  */
 
 /**
