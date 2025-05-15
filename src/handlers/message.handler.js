@@ -86,20 +86,27 @@ class MessageHandler {
     if (coordinates && coordinates.length > 0) {
       Logger.info(`Coordenadas encontradas: ${coordinates.join(', ')}`, 'MessageHandler');
       
-      // Enviar solo la URL original al grupo sin alertas
+      // Enviar la URL original al grupo y confirmación al origen
       if (config.TELEGRAM_GROUP_ID) {
         try {
           await bot.sendMessage(config.TELEGRAM_GROUP_ID, text);
+          await bot.sendMessage(chatId, '✅ URL enviada correctamente al grupo de control.');
           Logger.info('URL enviada al grupo', 'MessageHandler');
         } catch (error) {
           Logger.logError('Error al enviar URL al grupo', error, 'MessageHandler');
         }
       }
       
-      // Enviar cada coordenada en un mensaje separado
+      // Enviar cada coordenada al grupo y una confirmación al origen
       for (const coord of coordinates) {
         try {
-          await ChatUtils.sendMessageToUserAndGroup(bot, chatId, coord, config.TELEGRAM_GROUP_ID);
+          await ChatUtils.sendToGroupWithConfirmation(
+            bot, 
+            chatId, 
+            coord, 
+            config.TELEGRAM_GROUP_ID, 
+            '✅ Coordenadas enviadas correctamente al grupo de control.'
+          );
         } catch (error) {
           Logger.logError(`Error al enviar coordenada: ${coord}`, error, 'MessageHandler');
         }
@@ -162,7 +169,7 @@ class MessageHandler {
       await bot.deleteMessage(chatId, processingMsg.message_id)
         .catch(error => Logger.logError('Error al eliminar mensaje de procesamiento', error, 'MessageHandler'));
       
-      // Enviar alertas antes de los datos (movido desde _handleGoogleMapsUrl)
+      // Enviar alertas antes de los datos
       if (config.TELEGRAM_GROUP_ID && messages.length > 0) {
         try {
           await bot.sendMessage(config.TELEGRAM_GROUP_ID, '🚨👀 Oigan...', { parse_mode: 'Markdown' });
@@ -176,9 +183,17 @@ class MessageHandler {
       
       // Enviar cada dato en un mensaje separado
       if (messages.length > 0) {
+        // Enviar un solo mensaje de confirmación al chat de origen
+        await bot.sendMessage(chatId, '✅ Los datos del vehículo han sido enviados correctamente al grupo de control.');
+        
+        // Enviar cada mensaje al grupo destino
         for (const message of messages) {
           try {
-            await ChatUtils.sendMessageToUserAndGroup(bot, chatId, message, config.TELEGRAM_GROUP_ID);
+            // Solo enviar al grupo destino, no al chat de origen
+            if (config.TELEGRAM_GROUP_ID) {
+              await bot.sendMessage(config.TELEGRAM_GROUP_ID, message);
+              Logger.info(`Mensaje enviado al grupo: ${message}`, 'MessageHandler');
+            }
           } catch (error) {
             Logger.logError(`Error al enviar dato: ${message}`, error, 'MessageHandler');
           }

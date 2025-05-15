@@ -61,6 +61,34 @@ async function sendMessageToUserAndGroup(bot, userChatId, message, groupChatId, 
 }
 
 /**
+ * Envía datos al grupo destino y una confirmación al chat de origen
+ * @param {TelegramBot} bot - Instancia del bot
+ * @param {number} originChatId - ID del chat de origen
+ * @param {string} originalMessage - Mensaje original con los datos
+ * @param {string} groupChatId - ID del chat del grupo destino
+ * @param {string} confirmationMessage - Mensaje de confirmación (o null para generar automáticamente)
+ * @returns {Promise} - Promesa que se resuelve cuando ambos mensajes han sido enviados
+ */
+async function sendToGroupWithConfirmation(bot, originChatId, originalMessage, groupChatId, confirmationMessage = null) {
+  const Logger = require('./logger');
+  try {
+    // Enviar al grupo destino si está configurado
+    if (groupChatId) {
+      await bot.sendMessage(groupChatId, originalMessage);
+      Logger.info(`Mensaje enviado al grupo ${groupChatId}: ${originalMessage}`, 'ChatUtils');
+    }
+    
+    // Enviar confirmación al chat de origen
+    const confirmMessage = confirmationMessage || `✅ Mensaje enviado correctamente al grupo de control.`;
+    await bot.sendMessage(originChatId, confirmMessage);
+    Logger.info(`Confirmación enviada a usuario ${originChatId}: ${confirmMessage}`, 'ChatUtils');
+  } catch (error) {
+    Logger.logError('Error al enviar mensaje', error, 'ChatUtils');
+    throw error;
+  }
+}
+
+/**
  * Función para reintento de operaciones
  * @param {Function} fn - Función a ejecutar con reintento
  * @param {number} retries - Número de reintentos
@@ -82,5 +110,6 @@ async function withRetry(fn, retries = 3, delay = 2000) {
 module.exports = {
   getChatInfo,
   sendMessageToUserAndGroup,
-  withRetry
+  withRetry,
+  sendToGroupWithConfirmation
 };
