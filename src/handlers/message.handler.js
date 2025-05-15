@@ -108,14 +108,16 @@ class MessageHandler {
       // INTEGRACIÓN: Solicitar automáticamente el timing para la primera coordenada
       if (coordinates.length > 0) {
         try {
+          // CAMBIO DE ORDEN: Primero enviar mensaje de "Calculando tiempos de llegada..."
+          if (config.TELEGRAM_GROUP_ID) {
+            await bot.sendMessage(config.TELEGRAM_GROUP_ID, '⏱️ *Calculando tiempos de llegada...*', { parse_mode: 'Markdown' });
+            Logger.info('Mensaje de cálculo de tiempos enviado', 'MessageHandler');
+          }
+          
+          // Luego hacer la solicitud a RecLocation
           Logger.info(`Solicitando automáticamente timing para coordenada: ${coordinates[0]}`, 'MessageHandler');
           await RecLocationService.requestTimingReport(coordinates[0], config.TELEGRAM_GROUP_ID);
           Logger.info(`Solicitud de timing completada exitosamente`, 'MessageHandler');
-          
-          // Informar al usuario que se ha solicitado el tiempo (opcional)
-          if (config.TELEGRAM_GROUP_ID) {
-            await bot.sendMessage(config.TELEGRAM_GROUP_ID, '⏱️ *Calculando tiempos de llegada...*', { parse_mode: 'Markdown' });
-          }
         } catch (error) {
           Logger.logError('Error al solicitar timing automático', error, 'MessageHandler');
         }
