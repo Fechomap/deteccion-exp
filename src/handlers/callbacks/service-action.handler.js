@@ -83,8 +83,14 @@ class ServiceActionHandler {
 
     this.logger.info(`Servicio ${serviceData.id} tomado por ${userName}`, 'ServiceActionHandler');
 
-    // Actualizar el mensaje original
-    const updatedMessage = `${query.message.text}\n\n✅ *SERVICIO TOMADO POR ${userName}*`;
+    // Actualizar el mensaje original manteniendo la URL
+    const vehicleInfo = serviceData.messages && serviceData.messages.length > 1 ? 
+      serviceData.messages[1] : 'No hay información del vehículo';
+    
+    const updatedMessage = `🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n\n` +
+                          `🚗 *Vehículo:* ${vehicleInfo}\n\n` +
+                          (serviceData.url ? `🗺️ [Ver en Google Maps](${serviceData.url})\n\n` : '') +
+                          `✅ *SERVICIO TOMADO POR ${userName}*`;
 
     try {
       await bot.editMessageText(updatedMessage, {
@@ -178,8 +184,14 @@ class ServiceActionHandler {
 
     this.logger.info(`Servicio ${serviceData.id} rechazado por ${userName}`, 'ServiceActionHandler');
 
-    // Actualizar el mensaje original
-    const updatedMessage = `${query.message.text}\n\n❌ *SERVICIO RECHAZADO POR ${userName}*\n\n⚠️ *Este servicio ha sido rechazado y no será procesado.*`;
+    // Actualizar el mensaje original manteniendo la URL
+    const vehicleInfo = serviceData.messages && serviceData.messages.length > 1 ? 
+      serviceData.messages[1] : 'No hay información del vehículo';
+    
+    const updatedMessage = `🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n\n` +
+                          `🚗 *Vehículo:* ${vehicleInfo}\n\n` +
+                          (serviceData.url ? `🗺️ [Ver en Google Maps](${serviceData.url})\n\n` : '') +
+                          `❌ *SERVICIO RECHAZADO POR ${userName}*\n\n⚠️ *Este servicio ha sido rechazado y no será procesado.*`;
 
     try {
       await bot.editMessageText(updatedMessage, {
