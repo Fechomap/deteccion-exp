@@ -164,6 +164,17 @@ class MapsMessageHandler extends BaseMessageHandler {
             }
 
             await bot.sendMessage(chatId, '✅ URL y coordenadas agregadas al servicio. Los botones de acción ya están disponibles.');
+            
+            // Enviar separador emoji después de 1.5 segundos
+            setTimeout(async () => {
+              try {
+                await bot.sendMessage(config.TELEGRAM_GROUP_ID, '🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️');
+                Logger.info('Separador emoji enviado después de procesar URL', 'MapsHandler');
+              } catch (error) {
+                Logger.logError('Error al enviar separador emoji', error, 'MapsHandler');
+              }
+            }, 1500); // 1.5 segundos
+            
             return;
           }
         } else {

@@ -168,10 +168,6 @@ class TimingDetectorHandler extends BaseMessageHandler {
       });
 
       Logger.info(`✅ Mensaje actualizado con botones para servicio ${serviceData.id}`, 'TimingDetector');
-      
-      // Enviar separador emoji después del reporte de timing
-      await bot.sendMessage(config.TELEGRAM_GROUP_ID, '🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️')
-        .catch(error => Logger.logError('Error al enviar separador emoji', error, 'TimingDetector'));
     } catch (error) {
       Logger.logError('Error al actualizar mensaje con botones', error, 'TimingDetector');
 
