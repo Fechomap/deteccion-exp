@@ -112,33 +112,9 @@ class ServiceActionHandler {
 
     this.logger.info(`Preparando envío de detalles completos (grupo ${detailsGroupId})`, 'ServiceActionHandler');
 
-    // 1. Enviar datos de ChatGPT
-    if (serviceData.messages && serviceData.messages.length > 0) {
-      this.logger.info(`Encolando ${serviceData.messages.length} mensajes para envío`, 'ServiceActionHandler');
-
-      // Primero enviamos un mensaje de cabecera
-      queue.enqueue(
-        chatId,
-        async () => await bot.sendMessage(chatId, '📋 *INFORMACIÓN COMPLETA DEL SERVICIO:*', { parse_mode: 'Markdown' }),
-        'Cabecera de detalles',
-        { groupId: detailsGroupId }
-      );
-
-      // Luego enviamos cada uno de los mensajes
-      for (let i = 0; i < serviceData.messages.length; i++) {
-        const message = serviceData.messages[i];
-        queue.enqueue(
-          chatId,
-          async () => await bot.sendMessage(chatId, message),
-          `Dato ${i+1}: ${message.substr(0, 20)}${message.length > 20 ? '...' : ''}`,
-          { groupId: detailsGroupId }
-        );
-      }
-    }
-
-    // 2. Enviar coordenadas
+    // 1. Enviar coordenadas PRIMERO
     if (serviceData.coordinates && serviceData.coordinates.length > 0) {
-      this.logger.info(`Encolando ${serviceData.coordinates.length} coordenadas para envío`, 'ServiceActionHandler');
+      this.logger.info(`Encolando ${serviceData.coordinates.length} coordenadas para envío (PRIMERO)`, 'ServiceActionHandler');
 
       queue.enqueue(
         chatId,
@@ -157,10 +133,26 @@ class ServiceActionHandler {
       }
     }
 
+    // 2. Enviar datos de ChatGPT DESPUÉS
+    if (serviceData.messages && serviceData.messages.length > 0) {
+      this.logger.info(`Encolando ${serviceData.messages.length} mensajes para envío (DESPUÉS)`, 'ServiceActionHandler');
+
+      // Enviar cada uno de los mensajes directamente
+      for (let i = 0; i < serviceData.messages.length; i++) {
+        const message = serviceData.messages[i];
+        queue.enqueue(
+          chatId,
+          async () => await bot.sendMessage(chatId, message),
+          `Dato ${i+1}: ${message.substr(0, 20)}${message.length > 20 ? '...' : ''}`,
+          { groupId: detailsGroupId }
+        );
+      }
+    }
+
     // 3. Mensaje de confirmación final
     queue.enqueue(
       chatId,
-      async () => await bot.sendMessage(chatId, '✅ *Todos los datos han sido enviados correctamente.*', { parse_mode: 'Markdown' }),
+      async () => await bot.sendMessage(chatId, '✅🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n*Todos los datos han sido enviados correctamente.*', { parse_mode: 'Markdown' }),
       'Confirmación final',
       { groupId: detailsGroupId }
     );
