@@ -12,7 +12,7 @@ class HelpCommand extends BaseCommand {
   getPattern() {
     return /\/ayuda/;
   }
-  
+
   /**
    * Ejecuta el comando /ayuda
    * @param {Object} bot - Instancia del bot de Telegram
@@ -21,16 +21,16 @@ class HelpCommand extends BaseCommand {
   async execute(bot, msg) {
     const chatId = msg.chat.id;
     const info = ChatUtils.getChatInfo(msg);
-    
+
     // Log detallado
     this.logger.info(`Comando /ayuda recibido:
       Chat ID: ${chatId}
       Tipo: ${info.chat.type}
       De: ${info.chat.type === 'private' ? `${info.from.firstName} ${info.from.lastName}` : info.chat.title}
       ${info.from.username ? `Username: @${info.from.username}` : ''}`, 'HelpCommand');
-    
+
     // Enviar mensaje de ayuda
-    await bot.sendMessage(chatId, 
+    await bot.sendMessage(chatId,
       '📍 *COORDENADAS*\n' +
       'Envíame cualquier enlace de Google Maps y extraeré las coordenadas.\n\n' +
       '📋 *TEXTO DE LA PÁGINA*\n' +
@@ -51,7 +51,7 @@ class HelpCommand extends BaseCommand {
       'Si estás procesando texto con ChatGPT, cualquier enlace o mensaje adicional se pondrá en cola y se enviará después de que se complete el procesamiento actual.',
       { parse_mode: 'Markdown' }
     );
-    
+
     this.logger.info('Mensaje de ayuda enviado', 'HelpCommand');
   }
 }

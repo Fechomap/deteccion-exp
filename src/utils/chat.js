@@ -11,9 +11,9 @@ function getChatInfo(msg) {
   const chat = msg.chat;
   const from = msg.from || {};
   const chatType = chat.type || 'desconocido';
-  
+
   // Construir información del chat
-  let chatInfo = {
+  const chatInfo = {
     id: chat.id,
     type: chatType,
     title: chat.title || 'N/A',
@@ -21,15 +21,15 @@ function getChatInfo(msg) {
     firstName: chat.first_name || 'N/A',
     lastName: chat.last_name || 'N/A'
   };
-  
+
   // Construir información del remitente
-  let fromInfo = {
+  const fromInfo = {
     id: from.id || 'N/A',
     username: from.username || 'N/A',
     firstName: from.first_name || 'N/A',
     lastName: from.last_name || 'N/A'
   };
-  
+
   return { chat: chatInfo, from: fromInfo };
 }
 
@@ -48,7 +48,7 @@ async function sendMessageToUserAndGroup(bot, userChatId, message, groupChatId, 
     // Enviar al usuario
     await bot.sendMessage(userChatId, message);
     Logger.info(`Mensaje enviado a usuario ${userChatId}: ${message}`, 'ChatUtils');
-    
+
     // Enviar al grupo si está configurado
     if (sendToGroup && groupChatId) {
       await bot.sendMessage(groupChatId, message);
@@ -77,9 +77,9 @@ async function sendToGroupWithConfirmation(bot, originChatId, originalMessage, g
       await bot.sendMessage(groupChatId, originalMessage);
       Logger.info(`Mensaje enviado al grupo ${groupChatId}: ${originalMessage}`, 'ChatUtils');
     }
-    
+
     // Enviar confirmación al chat de origen
-    const confirmMessage = confirmationMessage || `✅ Mensaje enviado correctamente al grupo de control.`;
+    const confirmMessage = confirmationMessage || '✅ Mensaje enviado correctamente al grupo de control.';
     await bot.sendMessage(originChatId, confirmMessage);
     Logger.info(`Confirmación enviada a usuario ${originChatId}: ${confirmMessage}`, 'ChatUtils');
   } catch (error) {

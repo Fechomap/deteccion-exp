@@ -23,10 +23,10 @@ class CommandRegistry {
       new QueueStatusCommand(services),
       new QueueClearCommand(services)
     ];
-    
+
     Logger.info(`Inicializados ${this.commands.length} comandos`, 'CommandRegistry');
   }
-  
+
   /**
    * Registra todos los comandos en el bot
    * @param {Object} bot - Instancia del bot de Telegram

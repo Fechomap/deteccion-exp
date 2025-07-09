@@ -11,7 +11,7 @@ class TimingCommand extends BaseCommand {
   getPattern() {
     return /\/testtiming (.+)/;
   }
-  
+
   /**
    * Ejecuta el comando /testtiming
    * @param {Object} bot - Instancia del bot de Telegram
@@ -22,16 +22,16 @@ class TimingCommand extends BaseCommand {
     const chatId = msg.chat.id;
     const coordinates = match[1].trim();
     const { recLocation, config } = this.services;
-    
+
     this.logger.info(`Comando /testtiming recibido con coordenadas: ${coordinates}`, 'TimingCommand');
-    
+
     try {
       // Notificar que estamos probando
       await bot.sendMessage(chatId, `Probando integración con RecLocation API...\nCoordenadas: ${coordinates}`, { parse_mode: 'Markdown' });
-      
+
       // Solicitar timing report
       const result = await recLocation.requestTimingReport(coordinates, config.TELEGRAM_GROUP_ID);
-      
+
       // Enviar resultado
       await bot.sendMessage(chatId, `✅ Solicitud enviada con éxito a RecLocation.\nRespuesta: ${JSON.stringify(result)}`, { parse_mode: 'Markdown' });
       this.logger.info(`Prueba de timing completada para ${coordinates}`, 'TimingCommand');

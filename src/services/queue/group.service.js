@@ -7,10 +7,10 @@ class GroupService {
   constructor(queueService) {
     this.queueService = queueService;
     this.priorityGroups = new Map();
-    
+
     Logger.info('Servicio de grupos de mensajes inicializado', 'GroupService');
   }
-  
+
   /**
    * Registra un mensaje como parte de un grupo
    * @param {string} groupId - ID del grupo
@@ -20,11 +20,11 @@ class GroupService {
     if (!this.priorityGroups.has(groupId)) {
       this.priorityGroups.set(groupId, []);
     }
-    
+
     this.priorityGroups.get(groupId).push(message);
     Logger.info(`Mensaje agregado al grupo ${groupId}: ${message.description}`, 'GroupService');
   }
-  
+
   /**
    * Marca un grupo de mensajes como completo y los agrega a la cola
    * @param {string} groupId - ID del grupo
@@ -36,13 +36,13 @@ class GroupService {
       Logger.warn(`No se encontró el grupo ${groupId} para completar`, 'GroupService');
       return;
     }
-    
+
     const groupMessages = this.priorityGroups.get(groupId);
-    
+
     // Crear un manejador que procese todos los mensajes del grupo
     const groupHandler = async () => {
       Logger.info(`Procesando grupo de mensajes ${groupId} (${groupMessages.length} mensajes)`, 'GroupService');
-      
+
       for (const message of groupMessages) {
         try {
           // Ejecutar cada manejador con un pequeño retraso entre ellos
@@ -54,7 +54,7 @@ class GroupService {
         }
       }
     };
-    
+
     // Encolar el grupo como un solo elemento
     this.queueService.enqueue(
       chatId,
@@ -62,13 +62,13 @@ class GroupService {
       `Grupo de mensajes ${groupId} (${groupMessages.length} mensajes)`,
       { priority }
     );
-    
+
     Logger.info(`Grupo ${groupId} completado y agregado a la cola.`, 'GroupService');
-    
+
     // Eliminar el grupo ya que se ha agregado a la cola
     this.priorityGroups.delete(groupId);
   }
-  
+
   /**
    * Obtiene información sobre los grupos pendientes
    * @returns {Object} - Información sobre los grupos
@@ -80,7 +80,7 @@ class GroupService {
     }
     return groupInfo;
   }
-  
+
   /**
    * Crea un retraso utilizando Promise
    * @private

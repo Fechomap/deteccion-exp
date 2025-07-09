@@ -17,15 +17,15 @@ class TelegramService {
   static initialize() {
     // Inicializar el bot según la configuración
     let bot;
-    
+
     // Verificar si estamos en modo desarrollo forzado
     const isLocalDev = config.NODE_ENV === 'development' || !config.USE_WEBHOOK;
-    
+
     if (isLocalDev) {
       // Modo polling para desarrollo local
       Logger.info('Iniciando bot en modo polling para desarrollo local', 'Telegram');
       bot = new TelegramBot(config.TELEGRAM_TOKEN, { polling: true });
-      
+
       // Luego intentamos eliminar el webhook, pero no dependemos de ello para crear el bot
       const tempBot = new TelegramBot(config.TELEGRAM_TOKEN, { polling: false });
       tempBot.deleteWebHook()
@@ -40,27 +40,27 @@ class TelegramService {
       // Modo webhook para producción
       Logger.info(`Iniciando bot en modo webhook en URL: ${config.APP_URL}`, 'Telegram');
       bot = new TelegramBot(config.TELEGRAM_TOKEN, { webHook: true });
-      
+
       // Configurar webhook
       bot.setWebHook(`${config.APP_URL}/bot${config.TELEGRAM_TOKEN}`);
-      
+
       // Crear servidor Express para webhook
       const app = express();
-      
+
       // Configurar middleware para Telegram
       app.use(express.json());
-      
+
       // Ruta para webhook de Telegram
       app.post(`/bot${config.TELEGRAM_TOKEN}`, (req, res) => {
         bot.processUpdate(req.body);
         res.sendStatus(200);
       });
-      
+
       // Ruta de verificación
       app.get('/', (req, res) => {
         res.send('El bot está funcionando correctamente');
       });
-      
+
       // Iniciar servidor
       app.listen(config.PORT, () => {
         Logger.info(`Servidor Express iniciado en el puerto ${config.PORT}`, 'Telegram');
@@ -70,19 +70,19 @@ class TelegramService {
       Logger.info('No se pudo determinar el modo. Fallback a polling', 'Telegram');
       bot = new TelegramBot(config.TELEGRAM_TOKEN, { polling: true });
     }
-    
+
     // No registramos los handlers aquí, los pasamos de vuelta
     // para que se registren en src/index.js
-    
+
     // Manejador de errores de polling
     bot.on('polling_error', (error) => {
       Logger.logError('Error de polling', error, 'Telegram');
     });
-    
+
     // Mensaje de inicio
     const mode = config.USE_WEBHOOK ? `webhook en ${config.APP_URL}` : 'polling';
     Logger.info(`Bot iniciado correctamente en modo ${mode}`, 'Telegram');
-    
+
     return bot;
   }
 }

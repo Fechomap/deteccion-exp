@@ -6,7 +6,7 @@ class ServiceActionHandler {
     this.services = services;
     this.logger = Logger;
   }
-  
+
   register(bot) {
     bot.on('callback_query', async (query) => {
       try {
@@ -15,29 +15,29 @@ class ServiceActionHandler {
         this.logger.logError('Error al manejar callback', error, 'ServiceActionHandler');
       }
     });
-    
+
     this.logger.info('Manejador de callbacks para acciones de servicio registrado', 'ServiceActionHandler');
   }
-  
+
   async handleCallback(bot, query) {
     const callbackData = query.data;
     const chatId = query.message.chat.id;
     const messageId = query.message.message_id;
     const userId = query.from.id;
     const userName = query.from.first_name;
-    
+
     this.logger.info(`Callback recibido: ${callbackData} de usuario ${userName} (${userId})`, 'ServiceActionHandler');
-    
+
     // Verificar si es una acción de servicio
     if (callbackData.startsWith('take_service:') || callbackData.startsWith('reject_service:')) {
       const action = callbackData.split(':')[0];
       const serviceId = callbackData.split(':')[1];
-      
+
       // Log detallado
       this.logger.info(`Acción: ${action}, ID de servicio: ${serviceId}`, 'ServiceActionHandler');
-      
+
       const serviceCache = this.services.serviceCache;
-      
+
       // Verificar si serviceCache está disponible
       if (!serviceCache) {
         await bot.answerCallbackQuery(query.id, {
@@ -47,9 +47,9 @@ class ServiceActionHandler {
         this.logger.error('ServiceCache no disponible', 'ServiceActionHandler');
         return;
       }
-      
+
       const serviceData = serviceCache.getService(serviceId);
-      
+
       if (!serviceData) {
         await bot.answerCallbackQuery(query.id, {
           text: '⚠️ Este servicio ya no está disponible.',
@@ -58,7 +58,7 @@ class ServiceActionHandler {
         this.logger.warn(`Servicio ${serviceId} no encontrado en caché`, 'ServiceActionHandler');
         return;
       }
-      
+
       if (action === 'take_service') {
         // Usuario toma el servicio
         await this._handleTakeService(bot, query, serviceData);
@@ -68,24 +68,24 @@ class ServiceActionHandler {
       }
     }
   }
-  
+
   async _handleTakeService(bot, query, serviceData) {
     const { queue } = this.services;
     const chatId = query.message.chat.id;
     const messageId = query.message.message_id;
     const userName = query.from.first_name;
-    
+
     // Responder al callback
     await bot.answerCallbackQuery(query.id, {
       text: '✅ Servicio tomado! Mostrando detalles completos...',
       show_alert: false
     });
-    
+
     this.logger.info(`Servicio ${serviceData.id} tomado por ${userName}`, 'ServiceActionHandler');
-    
+
     // Actualizar el mensaje original
     const updatedMessage = `${query.message.text}\n\n✅ *SERVICIO TOMADO POR ${userName}*`;
-    
+
     try {
       await bot.editMessageText(updatedMessage, {
         chat_id: chatId,
@@ -94,22 +94,22 @@ class ServiceActionHandler {
         disable_web_page_preview: false,
         reply_markup: { inline_keyboard: [] }  // Eliminar botones
       });
-      
+
       this.logger.info(`Mensaje actualizado para servicio ${serviceData.id}`, 'ServiceActionHandler');
     } catch (error) {
       this.logger.logError('Error al actualizar mensaje', error, 'ServiceActionHandler');
       // Continuar a pesar del error para entregar los datos
     }
-    
+
     // Enviar todos los datos completos
     const detailsGroupId = `details_${Date.now()}_${chatId}`;
-    
+
     this.logger.info(`Preparando envío de detalles completos (grupo ${detailsGroupId})`, 'ServiceActionHandler');
-    
+
     // 1. Enviar datos de ChatGPT
     if (serviceData.messages && serviceData.messages.length > 0) {
       this.logger.info(`Encolando ${serviceData.messages.length} mensajes para envío`, 'ServiceActionHandler');
-      
+
       // Primero enviamos un mensaje de cabecera
       queue.enqueue(
         chatId,
@@ -117,7 +117,7 @@ class ServiceActionHandler {
         'Cabecera de detalles',
         { groupId: detailsGroupId }
       );
-      
+
       // Luego enviamos cada uno de los mensajes
       for (let i = 0; i < serviceData.messages.length; i++) {
         const message = serviceData.messages[i];
@@ -129,18 +129,18 @@ class ServiceActionHandler {
         );
       }
     }
-    
+
     // 2. Enviar coordenadas
     if (serviceData.coordinates && serviceData.coordinates.length > 0) {
       this.logger.info(`Encolando ${serviceData.coordinates.length} coordenadas para envío`, 'ServiceActionHandler');
-      
+
       queue.enqueue(
         chatId,
         async () => await bot.sendMessage(chatId, '📍 *COORDENADAS:*', { parse_mode: 'Markdown' }),
         'Cabecera de coordenadas',
         { groupId: detailsGroupId }
       );
-      
+
       for (const coord of serviceData.coordinates) {
         queue.enqueue(
           chatId,
@@ -150,7 +150,7 @@ class ServiceActionHandler {
         );
       }
     }
-    
+
     // 3. Mensaje de confirmación final
     queue.enqueue(
       chatId,
@@ -158,29 +158,29 @@ class ServiceActionHandler {
       'Confirmación final',
       { groupId: detailsGroupId }
     );
-    
+
     // Completar el grupo con prioridad alta
     queue.completeGroup(detailsGroupId, chatId, true);
     this.logger.info(`Grupo de detalles ${detailsGroupId} completado y encolado para envío`, 'ServiceActionHandler');
   }
-  
+
   async _handleRejectService(bot, query, serviceData) {
     const { serviceCache } = this.services;
     const chatId = query.message.chat.id;
     const messageId = query.message.message_id;
     const userName = query.from.first_name;
-    
+
     // Responder al callback
     await bot.answerCallbackQuery(query.id, {
       text: '❌ Servicio rechazado.',
       show_alert: false
     });
-    
+
     this.logger.info(`Servicio ${serviceData.id} rechazado por ${userName}`, 'ServiceActionHandler');
-    
+
     // Actualizar el mensaje original
     const updatedMessage = `${query.message.text}\n\n❌ *SERVICIO RECHAZADO POR ${userName}*\n\n⚠️ *Este servicio ha sido rechazado y no será procesado.*`;
-    
+
     try {
       await bot.editMessageText(updatedMessage, {
         chat_id: chatId,
@@ -189,12 +189,12 @@ class ServiceActionHandler {
         disable_web_page_preview: false,
         reply_markup: { inline_keyboard: [] }  // Eliminar botones
       });
-      
+
       this.logger.info(`Mensaje actualizado para servicio rechazado ${serviceData.id}`, 'ServiceActionHandler');
     } catch (error) {
       this.logger.logError('Error al actualizar mensaje de rechazo', error, 'ServiceActionHandler');
     }
-    
+
     // Eliminar servicio de la caché
     serviceCache.removeService(serviceData.id);
     this.logger.info(`Servicio ${serviceData.id} eliminado de caché`, 'ServiceActionHandler');

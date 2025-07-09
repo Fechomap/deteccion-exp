@@ -12,7 +12,7 @@ class ChatIdCommand extends BaseCommand {
   getPattern() {
     return /\/chatid/;
   }
-  
+
   /**
    * Ejecuta el comando /chatid
    * @param {Object} bot - Instancia del bot de Telegram
@@ -22,12 +22,12 @@ class ChatIdCommand extends BaseCommand {
     const chatId = msg.chat.id;
     const info = ChatUtils.getChatInfo(msg);
     const chatType = info.chat.type;
-    
+
     // Construir respuesta con información detallada
-    let response = `📢 *Información del chat:*\n\n`;
+    let response = '📢 *Información del chat:*\n\n';
     response += `• *ID del chat:* \`${chatId}\`\n`;
     response += `• *Tipo de chat:* ${chatType}\n`;
-    
+
     if (chatType === 'private') {
       response += `• *Usuario:* ${info.from.firstName} ${info.from.lastName}\n`;
       if (info.from.username) {
@@ -40,10 +40,10 @@ class ChatIdCommand extends BaseCommand {
         response += `• *Username:* @${info.from.username}\n`;
       }
     }
-    
+
     // Enviar mensaje con información
     await bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
-    
+
     this.logger.info(`Información del chat enviada a ${chatId}`, 'ChatIdCommand');
   }
 }

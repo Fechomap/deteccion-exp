@@ -7,10 +7,10 @@ class QueueService {
   constructor() {
     this.messageQueues = new Map();
     this.processingStatus = new Map();
-    
+
     Logger.info('Servicio de cola inicializado', 'QueueService');
   }
-  
+
   /**
    * Verifica si un chat está actualmente procesando un mensaje
    * @param {string|number} chatId - ID del chat
@@ -19,7 +19,7 @@ class QueueService {
   isProcessing(chatId) {
     return this.processingStatus.get(chatId) === true;
   }
-  
+
   /**
    * Marca un chat como en procesamiento
    * @param {string|number} chatId - ID del chat
@@ -28,7 +28,7 @@ class QueueService {
     this.processingStatus.set(chatId, true);
     Logger.info(`Chat ${chatId} marcado como en procesamiento`, 'QueueService');
   }
-  
+
   /**
    * Marca un chat como libre (no en procesamiento)
    * @param {string|number} chatId - ID del chat
@@ -37,7 +37,7 @@ class QueueService {
     this.processingStatus.set(chatId, false);
     Logger.info(`Chat ${chatId} marcado como libre`, 'QueueService');
   }
-  
+
   /**
    * Añade un mensaje a la cola para un chat específico
    * @param {string|number} chatId - ID del chat
@@ -50,16 +50,16 @@ class QueueService {
     if (!this.messageQueues.has(chatId)) {
       this.messageQueues.set(chatId, []);
     }
-    
+
     const queue = this.messageQueues.get(chatId);
-    const message = { 
-      handler: messageHandler, 
+    const message = {
+      handler: messageHandler,
       description,
       groupId: options.groupId || null,
       priority: options.priority || false,
       retries: 0
     };
-    
+
     // Añadir el manejador a la cola
     if (message.priority) {
       // Los mensajes prioritarios van al principio
@@ -69,10 +69,10 @@ class QueueService {
       queue.push(message);
       Logger.info(`Mensaje encolado para chat ${chatId}: ${description}. Total en cola: ${queue.length}`, 'QueueService');
     }
-    
+
     return message;
   }
-  
+
   /**
    * Obtiene y elimina el siguiente mensaje de la cola
    * @param {string|number} chatId - ID del chat
@@ -80,13 +80,13 @@ class QueueService {
    */
   dequeue(chatId) {
     if (!this.messageQueues.has(chatId)) return null;
-    
+
     const queue = this.messageQueues.get(chatId);
     if (queue.length === 0) return null;
-    
+
     return queue.shift();
   }
-  
+
   /**
    * Obtiene la longitud actual de la cola para un chat
    * @param {string|number} chatId - ID del chat
@@ -96,7 +96,7 @@ class QueueService {
     if (!this.messageQueues.has(chatId)) return 0;
     return this.messageQueues.get(chatId).length;
   }
-  
+
   /**
    * Limpia la cola de mensajes para un chat
    * @param {string|number} chatId - ID del chat

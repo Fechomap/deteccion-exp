@@ -12,10 +12,10 @@ class MessageQueueFacade {
     this.queueService = new QueueService();
     this.groupService = new GroupService(this.queueService);
     this.processorService = new ProcessorService(this.queueService);
-    
+
     Logger.info('Sistema de cola de mensajes inicializado completamente', 'MessageQueue');
   }
-  
+
   /**
    * Añade un mensaje a la cola para un chat específico
    * @param {string|number} chatId - ID del chat
@@ -26,24 +26,24 @@ class MessageQueueFacade {
   enqueue(chatId, messageHandler, description, options = {}) {
     // Si es parte de un grupo, delegarlo al servicio de grupos
     if (options.groupId) {
-      const message = { 
-        handler: messageHandler, 
+      const message = {
+        handler: messageHandler,
         description,
         groupId: options.groupId,
         priority: options.priority || false
       };
-      
+
       this.groupService.addToGroup(options.groupId, message);
       return;
     }
-    
+
     // Si no es parte de un grupo, añadirlo a la cola normal
     this.queueService.enqueue(chatId, messageHandler, description, options);
-    
+
     // Iniciar el procesamiento si no está en curso
     this.processorService.startProcessing(chatId);
   }
-  
+
   /**
    * Marca un grupo de mensajes como completo y los agrega a la cola
    * @param {string} groupId - ID del grupo
@@ -52,11 +52,11 @@ class MessageQueueFacade {
    */
   completeGroup(groupId, chatId, priority = false) {
     this.groupService.completeGroup(groupId, chatId, priority);
-    
+
     // Iniciar el procesamiento
     this.processorService.startProcessing(chatId);
   }
-  
+
   /**
    * Verifica si un chat está actualmente procesando un mensaje
    * @param {string|number} chatId - ID del chat
@@ -65,7 +65,7 @@ class MessageQueueFacade {
   isProcessing(chatId) {
     return this.queueService.isProcessing(chatId);
   }
-  
+
   /**
    * Obtiene la longitud actual de la cola para un chat
    * @param {string|number} chatId - ID del chat
@@ -74,7 +74,7 @@ class MessageQueueFacade {
   getQueueLength(chatId) {
     return this.queueService.getQueueLength(chatId);
   }
-  
+
   /**
    * Obtiene información sobre los grupos pendientes
    * @returns {Object} - Información sobre los grupos
@@ -82,7 +82,7 @@ class MessageQueueFacade {
   getPendingGroupsInfo() {
     return this.groupService.getPendingGroupsInfo();
   }
-  
+
   /**
    * Limpia la cola de mensajes para un chat
    * @param {string|number} chatId - ID del chat
@@ -90,7 +90,7 @@ class MessageQueueFacade {
   clearQueue(chatId) {
     this.queueService.clearQueue(chatId);
   }
-  
+
   /**
    * Bloquea temporalmente la recepción de nuevos mensajes para un chat
    * @param {string|number} chatId - ID del chat

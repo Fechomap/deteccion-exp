@@ -12,11 +12,11 @@ class BaseMessageHandler {
     if (this.constructor === BaseMessageHandler) {
       throw new Error('BaseMessageHandler es una clase abstracta y no puede ser instanciada directamente');
     }
-    
+
     this.logger = Logger;
     this.services = services;
   }
-  
+
   /**
    * Determina si este manejador puede procesar el mensaje
    * @param {Object} msg - Mensaje de Telegram
@@ -25,7 +25,7 @@ class BaseMessageHandler {
   canHandle(msg) {
     throw new Error('El método canHandle debe ser implementado por las subclases');
   }
-  
+
   /**
    * Procesa el mensaje
    * @param {Object} bot - Instancia del bot de Telegram
@@ -35,7 +35,7 @@ class BaseMessageHandler {
   async handle(bot, msg) {
     throw new Error('El método handle debe ser implementado por las subclases');
   }
-  
+
   /**
    * Encola el procesamiento de un mensaje
    * @param {string} chatId - ID del chat

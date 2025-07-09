@@ -14,10 +14,10 @@ class MessageHandlerRegistry {
       new ServiceMessageHandler(services),
       new TimingDetectorHandler(services)
     ];
-    
+
     Logger.info(`Registrados ${this.handlers.length} manejadores de mensajes`, 'MessageRegistry');
   }
-  
+
   /**
    * Registra los manejadores en el bot
    * @param {TelegramBot} bot - Instancia del bot de Telegram
@@ -26,7 +26,7 @@ class MessageHandlerRegistry {
     bot.on('message', async (msg) => {
       // Ignorar comandos
       if (!msg.text || msg.text.startsWith('/')) return;
-      
+
       // Buscar un manejador adecuado
       for (const handler of this.handlers) {
         if (handler.canHandle(msg)) {
@@ -35,11 +35,11 @@ class MessageHandlerRegistry {
           return; // Evitar que múltiples manejadores procesen el mismo mensaje
         }
       }
-      
+
       // Si llegamos aquí, ningún manejador pudo procesar el mensaje
       Logger.info(`Ningún manejador pudo procesar el mensaje: ${msg.text.substring(0, 30)}...`, 'MessageRegistry');
     });
-    
+
     Logger.info('Manejador general de mensajes registrado', 'MessageRegistry');
   }
 }

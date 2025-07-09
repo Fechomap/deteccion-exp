@@ -10,10 +10,10 @@ class OpenAIParserService {
     this.openai = new OpenAI({
       apiKey: config.OPENAI_API_KEY
     });
-    
+
     Logger.info('Servicio de procesamiento con OpenAI inicializado', 'OpenAIParser');
   }
-  
+
   /**
    * Extrae información relevante del texto copiado de la página web usando OpenAI
    * @param {string} text - Texto copiado de la página
@@ -23,32 +23,32 @@ class OpenAIParserService {
     try {
       Logger.info('Iniciando procesamiento de texto con OpenAI', 'OpenAIParser');
       Logger.info(`Longitud del texto: ${text.length} caracteres`, 'OpenAIParser');
-      
+
       // Sistema de prompt para el modelo GPT
       const systemPrompt = this._getSystemPrompt();
-      
+
       // Realizar la llamada a la API de OpenAI
       Logger.info('Enviando solicitud a OpenAI...', 'OpenAIParser');
       const completion = await this.openai.chat.completions.create({
-        model: "gpt-3.5-turbo", // Usamos gpt-3.5-turbo que es más rápido y económico
+        model: 'gpt-3.5-turbo', // Usamos gpt-3.5-turbo que es más rápido y económico
         messages: [
           {
-            role: "system",
+            role: 'system',
             content: systemPrompt
           },
           {
-            role: "user",
+            role: 'user',
             content: `Analiza el siguiente texto y extrae la información solicitada en formato JSON, asegurándote de que todos los campos sean strings, no arrays:\n\n${text}`
           }
         ],
         temperature: 0.2, // Baja temperatura para respuestas más consistentes
         max_tokens: 500
       });
-      
+
       // Obtener la respuesta de GPT
       const responseContent = completion.choices[0].message.content;
       Logger.info(`Respuesta recibida de OpenAI: ${responseContent}`, 'OpenAIParser');
-      
+
       // Procesar la respuesta
       return this._processGptResponse(responseContent);
     } catch (error) {
@@ -56,7 +56,7 @@ class OpenAIParserService {
       throw error;
     }
   }
-  
+
   /**
    * Obtiene el prompt del sistema para ChatGPT
    * @private
@@ -81,7 +81,7 @@ class OpenAIParserService {
     - IMPORTANTE: Todos los campos deben ser strings, no arrays.
     - Tu respuesta debe ser SOLAMENTE un objeto JSON válido con los campos: expediente, vehiculo, placas, usuario, cuenta, entreCalles, referencia`;
   }
-  
+
   /**
    * Procesa la respuesta de GPT para extraer el JSON
    * @private
@@ -93,26 +93,26 @@ class OpenAIParserService {
     let jsonStr = responseContent;
     const jsonRegex = /\{[\s\S]*\}/; // Regex para encontrar cualquier texto entre { }
     const jsonMatch = responseContent.match(jsonRegex);
-    
+
     if (jsonMatch) {
       jsonStr = jsonMatch[0]; // Usar solo la parte del texto que coincide con un objeto JSON
     }
-    
+
     try {
       const extractedData = JSON.parse(jsonStr);
-      
+
       // Normalizar los datos
       // Asegurarse de que vehículo sea un string
       if (Array.isArray(extractedData.vehiculo)) {
         extractedData.vehiculo = extractedData.vehiculo.join(' ');
         Logger.info(`Vehículo convertido de array a string: ${extractedData.vehiculo}`, 'OpenAIParser');
       }
-      
+
       // Asegurarse de que la cuenta sea CHUBB
       if (extractedData.expediente && extractedData.expediente.startsWith('9')) {
         extractedData.cuenta = 'CHUBB';
       }
-      
+
       Logger.info('Procesamiento de texto completado', 'OpenAIParser');
       return extractedData;
     } catch (jsonError) {
@@ -121,7 +121,7 @@ class OpenAIParserService {
       throw new Error(`No se pudo parsear la respuesta JSON: ${jsonError.message}`);
     }
   }
-  
+
   /**
    * Convierte los datos extraídos en un array de mensajes para enviar
    * @param {Object} data - Datos extraídos del texto
@@ -129,56 +129,56 @@ class OpenAIParserService {
    */
   formatDataToMessages(data) {
     const messages = [];
-    
+
     // 1. Expediente (obligatorio)
     if (data.expediente) {
       messages.push(data.expediente);
     } else {
-      messages.push("No se encontró expediente");
+      messages.push('No se encontró expediente');
     }
-    
+
     // 2. Datos del vehículo (obligatorio)
     if (data.vehiculo) {
       messages.push(data.vehiculo);
     } else {
-      messages.push("No se encontraron datos del vehículo");
+      messages.push('No se encontraron datos del vehículo');
     }
-    
+
     // 3. Placas (obligatorio)
     if (data.placas) {
       messages.push(data.placas);
     } else {
-      messages.push("No se encontraron placas");
+      messages.push('No se encontraron placas');
     }
-    
+
     // 4. Usuario (obligatorio)
     if (data.usuario) {
       messages.push(data.usuario);
     } else {
-      messages.push("No se encontró usuario");
+      messages.push('No se encontró usuario');
     }
-    
+
     // 5. Cuenta (siempre CHUBB cuando hay expediente que empieza con 9)
     if (data.cuenta) {
       messages.push(data.cuenta);
     } else {
-      messages.push("CHUBB");  // Por defecto
+      messages.push('CHUBB');  // Por defecto
     }
-    
+
     // 6. Entre calles (opcional)
     if (data.entreCalles) {
       messages.push(data.entreCalles);
     } else {
-      messages.push("No hay entre calles");
+      messages.push('No hay entre calles');
     }
-    
+
     // 7. Referencia (opcional)
     if (data.referencia) {
       messages.push(data.referencia);
     } else {
-      messages.push("No hay referencia");
+      messages.push('No hay referencia');
     }
-    
+
     Logger.info(`Generados ${messages.length} mensajes a partir de los datos`, 'OpenAIParser');
     return messages;
   }

@@ -19,13 +19,13 @@ const ServiceCacheService = require('./services/service-cache.service'); // Impo
  */
 async function main() {
   Logger.info('Configurando componentes de la aplicación...', 'Init');
-  
+
   // Validar configuración
   if (!config.isValid) {
     Logger.error('Configuración inválida. Abortando.', 'Init');
     process.exit(1);
   }
-  
+
   try {
     // Agrupar servicios para inyección de dependencias
     const services = {
@@ -37,11 +37,11 @@ async function main() {
       coordinatesUtil: CoordinatesUtil,
       serviceCache: ServiceCacheService // Añadir el servicio de caché aquí
     };
-    
+
     // Inicializar registros de manejadores
     const commandRegistry = new CommandRegistry(services);
     const messageRegistry = new MessageHandlerRegistry(services);
-    
+
     // Verificar conectividad con RecLocation API
     setTimeout(async () => {
       try {
@@ -50,18 +50,18 @@ async function main() {
         Logger.warn(`No se pudo verificar la conectividad con RecLocation API: ${error.message}`, 'Init');
       }
     }, 1000);
-    
+
     // Inicializar el bot de Telegram
     const bot = TelegramService.initialize();
-    
+
     // Registrar manejadores
     commandRegistry.register(bot);
     messageRegistry.register(bot);
-    
+
     // Registrar manejador de callbacks para los botones de servicio
     const serviceActionHandler = new ServiceActionHandler(services);
     serviceActionHandler.register(bot);
-    
+
     // Log de información de configuración
     Logger.info(`Configuración de IDs de chat - Detección-Exp: ${config.TELEGRAM_GROUP_ID}, RecLocation: ${config.RECLOCATION_GROUP_ID}`, 'Init');
     Logger.info('Sistema de cola de mensajes activado para entrega ordenada de mensajes', 'Init');

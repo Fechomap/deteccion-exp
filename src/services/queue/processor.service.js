@@ -7,15 +7,15 @@ const ChatUtils = require('../../utils/chat');
 class ProcessorService {
   constructor(queueService) {
     this.queueService = queueService;
-    
+
     // Configuración
     this.MAX_RETRIES = 3;      // Número máximo de reintentos
     this.RETRY_DELAY = 1000;   // Tiempo entre reintentos en ms
     this.MESSAGE_DELAY = 200;  // Tiempo entre mensajes consecutivos en ms
-    
+
     Logger.info('Procesador de cola inicializado', 'ProcessorService');
   }
-  
+
   /**
    * Inicia el procesamiento de la cola para un chat
    * @param {string|number} chatId - ID del chat
@@ -23,13 +23,13 @@ class ProcessorService {
   async startProcessing(chatId) {
     // Si ya está procesando, no hacer nada
     if (this.queueService.isProcessing(chatId)) return;
-    
+
     // Si no hay mensajes en la cola, no hacer nada
     if (this.queueService.getQueueLength(chatId) === 0) return;
-    
+
     // Marcar como procesando
     this.queueService.setProcessing(chatId);
-    
+
     try {
       await this._processNextMessage(chatId);
     } catch (error) {
@@ -38,7 +38,7 @@ class ProcessorService {
       this.queueService.clearProcessing(chatId);
     }
   }
-  
+
   /**
    * Procesa el siguiente mensaje en la cola
    * @private
@@ -47,22 +47,22 @@ class ProcessorService {
   async _processNextMessage(chatId) {
     // Obtener el siguiente mensaje
     const message = this.queueService.dequeue(chatId);
-    
+
     if (!message) {
       // No hay más mensajes, marcar como libre
       this.queueService.clearProcessing(chatId);
       return;
     }
-    
+
     Logger.info(`Procesando mensaje para chat ${chatId}: ${message.description}. Restantes en cola: ${this.queueService.getQueueLength(chatId)}`, 'ProcessorService');
-    
+
     try {
       // Ejecutar el manejador del mensaje con reintentos
       await this._executeWithRetries(message.handler, message, chatId);
-      
+
       // Pausa entre mensajes para respetar los límites de Telegram
       await this._delay(this.MESSAGE_DELAY);
-      
+
       // Procesar el siguiente mensaje si hay más
       if (this.queueService.getQueueLength(chatId) > 0) {
         await this._processNextMessage(chatId);
@@ -72,7 +72,7 @@ class ProcessorService {
       }
     } catch (error) {
       Logger.logError(`Error persistente al procesar mensaje para chat ${chatId}: ${message.description}`, error, 'ProcessorService');
-      
+
       // A pesar del error, continuamos con el siguiente mensaje
       if (this.queueService.getQueueLength(chatId) > 0) {
         await this._processNextMessage(chatId);
@@ -81,7 +81,7 @@ class ProcessorService {
       }
     }
   }
-  
+
   /**
    * Ejecuta una función con reintentos automáticos
    * @private
@@ -103,7 +103,7 @@ class ProcessorService {
       throw error;
     }
   }
-  
+
   /**
    * Bloquea temporalmente la recepción de nuevos mensajes para un chat
    * @param {string|number} chatId - ID del chat
@@ -112,7 +112,7 @@ class ProcessorService {
    */
   async blockTemporarily(chatId, timeoutMs = 10000) {
     this.queueService.setProcessing(chatId);
-    
+
     return new Promise(resolve => {
       setTimeout(() => {
         this.queueService.clearProcessing(chatId);
@@ -120,7 +120,7 @@ class ProcessorService {
       }, timeoutMs);
     });
   }
-  
+
   /**
    * Crea un retraso utilizando Promise
    * @private

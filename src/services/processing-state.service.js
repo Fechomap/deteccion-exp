@@ -7,10 +7,10 @@ class ProcessingStateService {
   constructor() {
     // Mapa para almacenar el estado de procesamiento de ChatGPT por chatId
     this.processingChatGPT = new Map();
-    
+
     Logger.info('Servicio de estado de procesamiento inicializado', 'ProcessingState');
   }
-  
+
   /**
    * Verifica si un chat está procesando con ChatGPT
    * @param {string|number} chatId - ID del chat
@@ -19,7 +19,7 @@ class ProcessingStateService {
   isProcessingChatGPT(chatId) {
     return this.processingChatGPT.get(chatId) === true;
   }
-  
+
   /**
    * Establece el estado de procesamiento de ChatGPT para un chat
    * @param {string|number} chatId - ID del chat
@@ -29,7 +29,7 @@ class ProcessingStateService {
     this.processingChatGPT.set(chatId, value);
     Logger.info(`Chat ${chatId} procesamiento ChatGPT: ${value ? 'INICIADO' : 'FINALIZADO'}`, 'ProcessingState');
   }
-  
+
   /**
    * Limpia el estado de procesamiento de ChatGPT para un chat
    * @param {string|number} chatId - ID del chat
