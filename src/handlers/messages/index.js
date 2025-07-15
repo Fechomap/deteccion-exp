@@ -2,6 +2,7 @@
  * Punto de entrada para manejadores de mensajes
  */
 const Logger = require('../../utils/logger');
+const AuthService = require('../../services/auth.service');
 const MapsMessageHandler = require('./maps.handler');
 const ServiceMessageHandler = require('./service.handler');
 const TimingDetectorHandler = require('./timing-detector.handler');
@@ -26,6 +27,12 @@ class MessageHandlerRegistry {
     bot.on('message', async (msg) => {
       // Ignorar comandos
       if (!msg.text || msg.text.startsWith('/')) return;
+
+      // Validar autorización del usuario
+      if (!AuthService.validateMessage(msg)) {
+        Logger.warn(`Acceso denegado para chat ID: ${msg.chat.id}`, 'MessageRegistry');
+        return;
+      }
 
       // Buscar un manejador adecuado
       for (const handler of this.handlers) {

@@ -2,6 +2,7 @@
  * Clase base para comandos de bot
  */
 const Logger = require('../../utils/logger');
+const AuthService = require('../../services/auth.service');
 
 class BaseCommand {
   /**
@@ -43,6 +44,12 @@ class BaseCommand {
   register(bot) {
     bot.onText(this.getPattern(), async (msg, match) => {
       try {
+        // Validar autorización del usuario
+        if (!AuthService.validateMessage(msg)) {
+          this.logger.warn(`Acceso denegado para comando ${this.constructor.name} - chat ID: ${msg.chat.id}`, 'Command');
+          return;
+        }
+
         await this.execute(bot, msg, match);
       } catch (error) {
         this.logger.logError(`Error al ejecutar comando ${this.constructor.name}`, error, 'Command');

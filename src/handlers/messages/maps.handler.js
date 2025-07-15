@@ -164,7 +164,7 @@ class MapsMessageHandler extends BaseMessageHandler {
             }
 
             await bot.sendMessage(chatId, '✅ URL y coordenadas agregadas al servicio. Los botones de acción ya están disponibles.');
-            
+
             // Enviar separador emoji después de 1.5 segundos
             setTimeout(async () => {
               try {
@@ -174,7 +174,7 @@ class MapsMessageHandler extends BaseMessageHandler {
                 Logger.logError('Error al enviar separador emoji', error, 'MapsHandler');
               }
             }, 1500); // 1.5 segundos
-            
+
             return;
           }
         } else {

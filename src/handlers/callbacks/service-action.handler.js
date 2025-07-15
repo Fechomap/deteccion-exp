@@ -1,5 +1,6 @@
 // src/handlers/callbacks/service-action.handler.js
 const Logger = require('../../utils/logger');
+const AuthService = require('../../services/auth.service');
 
 class ServiceActionHandler {
   constructor(services) {
@@ -10,6 +11,16 @@ class ServiceActionHandler {
   register(bot) {
     bot.on('callback_query', async (query) => {
       try {
+        // Validar autorización del usuario
+        if (!AuthService.validateCallback(query)) {
+          this.logger.warn(`Acceso denegado para callback - chat ID: ${query.message.chat.id}`, 'ServiceActionHandler');
+          await bot.answerCallbackQuery(query.id, {
+            text: '❌ No tienes autorización para usar este bot.',
+            show_alert: true
+          });
+          return;
+        }
+
         await this.handleCallback(bot, query);
       } catch (error) {
         this.logger.logError('Error al manejar callback', error, 'ServiceActionHandler');
@@ -84,10 +95,10 @@ class ServiceActionHandler {
     this.logger.info(`Servicio ${serviceData.id} tomado por ${userName}`, 'ServiceActionHandler');
 
     // Actualizar el mensaje original manteniendo la URL
-    const vehicleInfo = serviceData.messages && serviceData.messages.length > 1 ? 
+    const vehicleInfo = serviceData.messages && serviceData.messages.length > 1 ?
       serviceData.messages[1] : 'No hay información del vehículo';
-    
-    const updatedMessage = `🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n\n` +
+
+    const updatedMessage = '🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n\n' +
                           `🚗 *Vehículo:* ${vehicleInfo}\n\n` +
                           (serviceData.url ? `🗺️ [Ver en Google Maps](${serviceData.url})\n\n` : '') +
                           `✅ *SERVICIO TOMADO POR ${userName}*`;
@@ -177,10 +188,10 @@ class ServiceActionHandler {
     this.logger.info(`Servicio ${serviceData.id} rechazado por ${userName}`, 'ServiceActionHandler');
 
     // Actualizar el mensaje original manteniendo la URL
-    const vehicleInfo = serviceData.messages && serviceData.messages.length > 1 ? 
+    const vehicleInfo = serviceData.messages && serviceData.messages.length > 1 ?
       serviceData.messages[1] : 'No hay información del vehículo';
-    
-    const updatedMessage = `🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n\n` +
+
+    const updatedMessage = '🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n\n' +
                           `🚗 *Vehículo:* ${vehicleInfo}\n\n` +
                           (serviceData.url ? `🗺️ [Ver en Google Maps](${serviceData.url})\n\n` : '') +
                           `❌ *SERVICIO RECHAZADO POR ${userName}*\n\n⚠️ *Este servicio ha sido rechazado y no será procesado.*`;

@@ -83,7 +83,9 @@ class RecLocationService {
       let healthUrl = config.RECLOCATION_API_URL.replace('/api/timing', '/health');
       if (healthUrl === config.RECLOCATION_API_URL) {
         // Si no cambió, probablemente la URL no tiene '/api/timing'
-        healthUrl = 'https://web-production-23d41.up.railway.app/health';
+        // Usar la URL base para health check
+        const baseUrl = new URL(config.RECLOCATION_API_URL);
+        healthUrl = `${baseUrl.protocol}//${baseUrl.host}/health`;
       }
 
       const response = await axios({

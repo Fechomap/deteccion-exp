@@ -121,9 +121,10 @@ npm start
 | `TELEGRAM_TOKEN` | Token del bot de Telegram | Sí |
 | `OPENAI_API_KEY` | Clave API de OpenAI | Sí |
 | `TELEGRAM_GROUP_ID` | ID del grupo para notificaciones | No |
-| `RECLOCATION_API_URL` | URL de la API de RecLocation | No (por defecto: https://web-production-23d41.up.railway.app/api/timing) |
-| `RECLOCATION_API_TOKEN` | Token para RecLocation API | No (por defecto: token_1000_anios_jehova) |
-| `RECLOCATION_GROUP_ID` | ID de grupo específico para RecLocation | No (por defecto: -1002420951714) |
+| `RECLOCATION_API_URL` | URL de la API de RecLocation | Sí |
+| `RECLOCATION_API_TOKEN` | Token para RecLocation API | Sí |
+| `RECLOCATION_GROUP_ID` | ID de grupo específico para RecLocation | Sí |
+| `ALLOWED_CHAT_IDS` | IDs de chat autorizados (separados por comas) | Sí |
 | `USE_WEBHOOK` | Usar modo webhook (true/false) | No (por defecto: false) |
 | `APP_URL` | URL para configuración de webhook | Solo si USE_WEBHOOK=true |
 | `PORT` | Puerto para el servidor webhook | No (por defecto: 3000) |

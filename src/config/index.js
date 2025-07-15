@@ -8,14 +8,15 @@ const config = {
   // Telegram
   TELEGRAM_TOKEN: process.env.TELEGRAM_TOKEN,
   TELEGRAM_GROUP_ID: process.env.TELEGRAM_GROUP_ID,
+  ALLOWED_CHAT_IDS: process.env.ALLOWED_CHAT_IDS ? process.env.ALLOWED_CHAT_IDS.split(',').map(id => id.trim()) : [],
 
   // OpenAI
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
 
   // RecLocation
-  RECLOCATION_API_URL: process.env.RECLOCATION_API_URL || 'https://web-production-23d41.up.railway.app/api/timing',
-  RECLOCATION_API_TOKEN: process.env.RECLOCATION_API_TOKEN || 'token_1000_anios_jehova',
-  RECLOCATION_GROUP_ID: process.env.RECLOCATION_GROUP_ID || '-1002420951714',
+  RECLOCATION_API_URL: process.env.RECLOCATION_API_URL,
+  RECLOCATION_API_TOKEN: process.env.RECLOCATION_API_TOKEN,
+  RECLOCATION_GROUP_ID: process.env.RECLOCATION_GROUP_ID,
 
   // Aplicación
   NODE_ENV: process.env.NODE_ENV || 'development',
@@ -28,7 +29,12 @@ const config = {
 const validateConfig = () => {
   const requiredEnvVars = [
     'TELEGRAM_TOKEN',
-    'OPENAI_API_KEY'
+    'OPENAI_API_KEY',
+    'RECLOCATION_API_TOKEN',
+    'RECLOCATION_API_URL',
+    'RECLOCATION_GROUP_ID',
+    'TELEGRAM_GROUP_ID',
+    'ALLOWED_CHAT_IDS'
   ];
 
   const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
