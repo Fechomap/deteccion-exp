@@ -67,19 +67,21 @@ class OpenAIParserService {
     
     Extrae SOLAMENTE los siguientes datos y entrégalos en formato JSON:
     1. El número de expediente (6 dígitos que empiezan con 9, suele estar junto a la palabra GRUAS)
-    2. Los datos del vehículo como un único string en formato: "[Marca] [Modelo] [Año] [Color]"
-    3. Las placas (si están disponibles)
-    4. El nombre completo del cliente o usuario (prioriza el campo "Cliente" sobre "quién recibe")
-    5. Entre calles (si están disponibles)
-    6. Referencia (si está disponible)
+    2. El tipo de servicio (que aparece junto al número de expediente: grúa, gasolina, cambio de llanta, etc.)
+    3. Los datos del vehículo como un único string en formato: "[Marca] [Modelo] [Año] [Color]"
+    4. Las placas (si están disponibles)
+    5. El nombre completo del cliente o usuario (prioriza el campo "Cliente" sobre "quién recibe")
+    6. Entre calles (si están disponibles)
+    7. Referencia (si está disponible)
     
     IMPORTANTE:
     - El campo cuenta siempre es "CHUBB" cuando hay un expediente
+    - El tipo de servicio suele aparecer junto al expediente (ejemplo: "GRUAS 912345 Grúa", "GRUAS 923456 Gasolina")
     - Ignora términos que no son placas reales como "TROYA03", "CRK", "4X2", "PAZ", "REYES", etc.
     - No incluyas las coordenadas en tu respuesta
     - Si un dato no está disponible en el texto, incluye el campo con valor null
     - IMPORTANTE: Todos los campos deben ser strings, no arrays.
-    - Tu respuesta debe ser SOLAMENTE un objeto JSON válido con los campos: expediente, vehiculo, placas, usuario, cuenta, entreCalles, referencia`;
+    - Tu respuesta debe ser SOLAMENTE un objeto JSON válido con los campos: expediente, tipoServicio, vehiculo, placas, usuario, cuenta, entreCalles, referencia`;
   }
 
   /**
@@ -137,42 +139,49 @@ class OpenAIParserService {
       messages.push('No se encontró expediente');
     }
 
-    // 2. Datos del vehículo (obligatorio)
+    // 2. Tipo de servicio (obligatorio)
+    if (data.tipoServicio) {
+      messages.push(data.tipoServicio);
+    } else {
+      messages.push('No se encontró tipo de servicio');
+    }
+
+    // 3. Datos del vehículo (obligatorio)
     if (data.vehiculo) {
       messages.push(data.vehiculo);
     } else {
       messages.push('No se encontraron datos del vehículo');
     }
 
-    // 3. Placas (obligatorio)
+    // 4. Placas (obligatorio)
     if (data.placas) {
       messages.push(data.placas);
     } else {
       messages.push('No se encontraron placas');
     }
 
-    // 4. Usuario (obligatorio)
+    // 5. Usuario (obligatorio)
     if (data.usuario) {
       messages.push(data.usuario);
     } else {
       messages.push('No se encontró usuario');
     }
 
-    // 5. Cuenta (siempre CHUBB cuando hay expediente que empieza con 9)
+    // 6. Cuenta (siempre CHUBB cuando hay expediente que empieza con 9)
     if (data.cuenta) {
       messages.push(data.cuenta);
     } else {
       messages.push('CHUBB');  // Por defecto
     }
 
-    // 6. Entre calles (opcional)
+    // 7. Entre calles (opcional)
     if (data.entreCalles) {
       messages.push(data.entreCalles);
     } else {
       messages.push('No hay entre calles');
     }
 
-    // 7. Referencia (opcional)
+    // 8. Referencia (opcional)
     if (data.referencia) {
       messages.push(data.referencia);
     } else {

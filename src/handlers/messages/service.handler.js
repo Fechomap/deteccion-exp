@@ -133,11 +133,13 @@ class ServiceMessageHandler extends BaseMessageHandler {
 
           serviceCache.storeService(serviceId, serviceData);
 
-          // Obtener solo la información del vehículo (segundo mensaje)
-          const vehicleInfo = messages.length > 1 ? messages[1] : 'No hay información del vehículo';
+          // Obtener información del tipo de servicio y vehículo
+          const serviceType = messages.length > 1 ? messages[1] : 'No definido';
+          const vehicleInfo = messages.length > 2 ? messages[2] : 'No hay información del vehículo';
 
           // Crear mensaje inicial sin botones (se añadirán cuando se procese la URL)
-          const initialMessage = `🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n\n🚗 *Vehículo:* ${vehicleInfo}\n\n⏳ *Esperando URL de Google Maps...*`;
+          const spacedServiceType = serviceType.toUpperCase().split('').join(' ');
+          const initialMessage = `🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n*${spacedServiceType}*\n\n🚗 *Vehículo:* ${vehicleInfo}\n\n⏳ *Esperando URL de Google Maps...*`;
 
           // Enviar mensaje inicial
           const sentMsg = await bot.sendMessage(

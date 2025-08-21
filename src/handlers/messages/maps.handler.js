@@ -112,11 +112,14 @@ class MapsMessageHandler extends BaseMessageHandler {
             serviceCache.storeService(pendingService, serviceData);
 
             // Actualizar mensaje con URL Y BOTONES INMEDIATAMENTE
-            const vehicleInfo = serviceData.messages && serviceData.messages.length > 1 ?
-              serviceData.messages[1] : 'No hay información del vehículo';
+            const serviceType = serviceData.messages && serviceData.messages.length > 1 ?
+              serviceData.messages[1] : 'No definido';
+            const vehicleInfo = serviceData.messages && serviceData.messages.length > 2 ?
+              serviceData.messages[2] : 'No hay información del vehículo';
 
             // CAMBIO: Mensaje con botones inmediatamente después de la URL
-            const updatedMessage = '🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n\n' +
+            const spacedServiceType = serviceType.toUpperCase().split('').join(' ');
+            const updatedMessage = `🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n*${spacedServiceType}*\n\n` +
                                   `🚗 *Vehículo:* ${vehicleInfo}\n\n` +
                                   `🗺️ [Ver en Google Maps](${text})\n\n` +
                                   '¿Desea tomar este servicio?';

@@ -115,13 +115,19 @@ class ServiceActionHandler {
     );
 
     // Actualizar el mensaje original con diseño mejorado y amarillo
-    const vehicleInfo =
+    const serviceType =
       serviceData.messages && serviceData.messages.length > 1
         ? serviceData.messages[1]
+        : 'No definido';
+    const vehicleInfo =
+      serviceData.messages && serviceData.messages.length > 2
+        ? serviceData.messages[2]
         : 'No hay información del vehículo';
 
+    const spacedServiceType = serviceType.toUpperCase().split('').join(' ');
     const updatedMessage =
       `🚨🚨🚨 *¡NUEVO SERVICIO DISPONIBLE!* 🚨🚨🚨
+*${spacedServiceType}*
 
 ` +
       `🚗 *Vehículo:* ${vehicleInfo}\n\n` +
@@ -177,13 +183,18 @@ class ServiceActionHandler {
     );
 
     // Actualizar el mensaje original manteniendo la URL
-    const vehicleInfo =
+    const serviceType =
       serviceData.messages && serviceData.messages.length > 1
         ? serviceData.messages[1]
+        : 'No definido';
+    const vehicleInfo =
+      serviceData.messages && serviceData.messages.length > 2
+        ? serviceData.messages[2]
         : 'No hay información del vehículo';
 
+    const spacedServiceType = serviceType.toUpperCase().split('').join(' ');
     const updatedMessage =
-      '🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n\n' +
+      `🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n*${spacedServiceType}*\n\n` +
       `🚗 *Vehículo:* ${vehicleInfo}\n\n` +
       (serviceData.url ? `🗺️ [Ver en Google Maps](${serviceData.url})\n\n` : '') +
       `⚠️⚡⚠️ SERVICIO TOMADO POR ${userName} CON **${selectedTime}** MINUTOS ⚠️⚡⚠️`;
@@ -290,8 +301,11 @@ class ServiceActionHandler {
         'ServiceActionHandler'
       );
 
-      // Enviar cada uno de los mensajes directamente
+      // Enviar mensajes omitiendo el tipo de servicio (ya se mostró arriba)
       for (let i = 0; i < serviceData.messages.length; i++) {
+        // Saltar el tipo de servicio (índice 1) ya que se muestra en el mensaje principal
+        if (i === 1) continue;
+        
         const message = serviceData.messages[i];
         queue.enqueue(
           chatId,
@@ -341,13 +355,18 @@ class ServiceActionHandler {
     );
 
     // Actualizar el mensaje original manteniendo la URL
-    const vehicleInfo =
+    const serviceType =
       serviceData.messages && serviceData.messages.length > 1
         ? serviceData.messages[1]
+        : 'No definido';
+    const vehicleInfo =
+      serviceData.messages && serviceData.messages.length > 2
+        ? serviceData.messages[2]
         : 'No hay información del vehículo';
 
+    const spacedServiceType = serviceType.toUpperCase().split('').join(' ');
     const updatedMessage =
-      '🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n\n' +
+      `🅰️🅱️🅰️⭕️🅰️🅱️🅰️⭕️🅰️🅱️🅰️\n🚨 *Nuevo Servicio Disponible*\n*${spacedServiceType}*\n\n` +
       `🚗 *Vehículo:* ${vehicleInfo}\n\n` +
       (serviceData.url ? `🗺️ [Ver en Google Maps](${serviceData.url})\n\n` : '') +
       `❌ *SERVICIO RECHAZADO POR ${userName}*\n\n⚠️ *Este servicio ha sido rechazado y no será procesado.*`;
